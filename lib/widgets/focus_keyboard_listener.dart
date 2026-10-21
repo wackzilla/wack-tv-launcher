@@ -52,18 +52,23 @@ class _FocusKeyboardListenerState extends State<FocusKeyboardListener> {
   KeyEventResult _handleKey(BuildContext context, RawKeyEvent rawKeyEvent) {
     switch (rawKeyEvent.runtimeType) {
       case RawKeyDownEvent:
-        return _keyDownEvent(context, rawKeyEvent.logicalKey);
+        return _keyDownEvent(context, rawKeyEvent.logicalKey, rawKeyEvent.repeat);
       case RawKeyUpEvent:
         return _keyUpEvent(context, rawKeyEvent.logicalKey);
     }
     return KeyEventResult.handled;
   }
 
-  KeyEventResult _keyDownEvent(BuildContext context, LogicalKeyboardKey key) {
+  KeyEventResult _keyDownEvent(BuildContext context, LogicalKeyboardKey key, bool repeat) {
     if (!longPressableKeys.contains(key)) {
       return widget.onPressed?.call(key) ?? KeyEventResult.ignored;
     }
     if (_keyDownAt == null) {
+      if (repeat) {
+        // OK is still held from a long press that opened this widget's menu or dialog.
+        // Without this, releasing OK would "press" whatever just got focus, like "Open".
+        return KeyEventResult.handled;
+      }
       _keyDownAt = DateTime.now().millisecondsSinceEpoch;
       return KeyEventResult.handled;
     } else if (_longPress()) {

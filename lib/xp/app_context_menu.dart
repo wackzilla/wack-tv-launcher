@@ -36,10 +36,13 @@ Future<void> launchXpApp(BuildContext context, App app) async {
   await settingsService.addRecentApp(app.packageName);
 }
 
+/// What the app menu asks its caller to do once it closes.
+enum AppContextMenuResult { move }
+
 /// The menu shown when OK is held, or Menu is pressed, on an app. [category] is the
 /// desktop group the app was picked from, if any.
-Future<void> showAppContextMenu(BuildContext context, App app, {Category? category}) =>
-    showXpDialog(context, _AppContextMenu(app: app, category: category));
+Future<AppContextMenuResult?> showAppContextMenu(BuildContext context, App app, {Category? category}) =>
+    showXpDialog<AppContextMenuResult>(context, _AppContextMenu(app: app, category: category));
 
 class _AppContextMenu extends StatelessWidget
 {
@@ -114,6 +117,11 @@ class _AppContextMenu extends StatelessWidget
             },
           ),
           if (canMove) ...[
+            XpMenuItem(
+              label: "Move",
+              icon: Icons.open_with,
+              onPressed: () => Navigator.of(context).pop(AppContextMenuResult.move),
+            ),
             XpMenuItem(
               label: "Move to front",
               icon: Icons.first_page,

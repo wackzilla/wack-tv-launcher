@@ -37,6 +37,9 @@ import 'models/category.dart';
 /// The launcher doesn't show itself on its own desktop.
 const _ownPackageName = "com.wack.tvlauncher";
 
+const double _iconHeight = 92;
+const double _iconSpacing = 6;
+
 /// The Windows XP style home screen: wallpaper, desktop icons, taskbar and Start menu.
 class FLauncher extends StatefulWidget {
   const FLauncher();
@@ -46,8 +49,11 @@ class FLauncher extends StatefulWidget {
 }
 
 class _FLauncherState extends State<FLauncher> {
-  final FocusNode _firstIconFocusNode = FocusNode(debugLabel: "first desktop icon");
+  // One node per app, kept across rebuilds so an icon stays selected while it's moved around.
+  final Map<String, FocusNode> _iconFocusNodes = {};
   final FocusNode _startButtonFocusNode = FocusNode(debugLabel: "start button");
+  String? _firstIconPackage;
+  String? _movingPackage;
 
   late final LauncherState _launcherState;
   late int _homePressedCount;
@@ -65,7 +71,9 @@ class _FLauncherState extends State<FLauncher> {
   @override
   void dispose() {
     _launcherState.removeListener(_onLauncherStateChanged);
-    _firstIconFocusNode.dispose();
+    for (final node in _iconFocusNodes.values) {
+      node.dispose();
+    }
     _startButtonFocusNode.dispose();
     super.dispose();
   }
@@ -74,7 +82,11 @@ class _FLauncherState extends State<FLauncher> {
     if (_launcherState.homePressedCount != _homePressedCount) {
       _homePressedCount = _launcherState.homePressedCount;
       _startMenuOpen = _launcherState.startMenuOpen;
-      _focusAfterFrame(() => _firstIconFocusNode.context != null ? _firstIconFocusNode : _startButtonFocusNode);
+      _movingPackage = null;
+      _focusAfterFrame(() {
+        final firstIcon = _iconFocusNodes[_firstIconPackage];
+        return firstIcon != null && firstIcon.context != null ? firstIcon : _startButtonFocusNode;
+      });
     }
     else if (_startMenuOpen && !_launcherState.startMenuOpen) {
       // Like XP, closing the Start menu leaves the Start button selected.
@@ -183,15 +195,21 @@ class _FLauncherState extends State<FLauncher> {
       }
 
       final entries = _desktopApps(appsService);
+      _firstIconPackage = entries.isEmpty ? null : entries.first.app.packageName;
+
       return LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
+        builder: (context, constraints) {
+          // Icons flow top to bottom, so moving left or right jumps a whole column.
+          final int iconsPerColumn = ((constraints.maxHeight - 12 + _iconSpacing) ~/ (_iconHeight + _iconSpacing)).clamp(1, 1000);
+
+          return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
           child: SizedBox(
             height: constraints.maxHeight - 12,
             child: Wrap(
               direction: Axis.vertical,
-              spacing: 6,
+              spacing: _iconSpacing,
               runSpacing: 10,
               children: [
                 for (int i = 0; i < entries.length; i++)
@@ -199,16 +217,42 @@ class _FLauncherState extends State<FLauncher> {
                     key: ValueKey(entries[i].app.packageName),
                     app: entries[i].app,
                     category: entries[i].category,
-                    focusNode: i == 0 ? _firstIconFocusNode : null,
+                    focusNode: _iconFocusNodes.putIfAbsent(entries[i].app.packageName,
+                        () => FocusNode(debugLabel: entries[i].app.packageName)),
                     autofocus: i == 0,
+                    moving: _movingPackage == entries[i].app.packageName,
+                    onStartMove: () => setState(() => _movingPackage = entries[i].app.packageName),
+                    onMove: (steps) => _moveIcon(appsService, entries[i].app, entries[i].category, steps, iconsPerColumn),
+                    onEndMove: () => _endMove(appsService, entries[i].category),
                   ),
               ],
             ),
           ),
-        ),
+          );
+        },
       );
     },
   );
+
+  /// [steps] is -1/+1 for up/down, or -2/+2 for left/right (a whole column).
+  void _moveIcon(AppsService appsService, App app, Category category, int steps, int iconsPerColumn) {
+    final applications = category.applications;
+    final int oldIndex = applications.indexWhere((application) => application.packageName == app.packageName);
+    if (oldIndex < 0) {
+      return;
+    }
+
+    final int delta = steps.abs() == 2 ? steps.sign * iconsPerColumn : steps;
+    final int newIndex = (oldIndex + delta).clamp(0, applications.length - 1);
+    if (newIndex != oldIndex) {
+      appsService.reorderApplication(category, oldIndex, newIndex);
+    }
+  }
+
+  void _endMove(AppsService appsService, Category category) {
+    setState(() => _movingPackage = null);
+    appsService.saveApplicationOrderInCategory(category);
+  }
 
   /// Every app on the launcher's groups, in group order, each shown once.
   static List<({App app, Category category})> _desktopApps(AppsService appsService) {
@@ -233,63 +277,128 @@ class _FLauncherState extends State<FLauncher> {
 }
 
 class _DesktopIcon extends StatelessWidget {
+  static const _moveKeys = {
+    LogicalKeyboardKey.arrowUp: -1,
+    LogicalKeyboardKey.arrowDown: 1,
+    LogicalKeyboardKey.arrowLeft: -2,
+    LogicalKeyboardKey.arrowRight: 2,
+  };
+
   final App app;
   final Category category;
-  final FocusNode? focusNode;
+  final FocusNode focusNode;
   final bool autofocus;
+  final bool moving;
+  final VoidCallback onStartMove;
+  final void Function(int steps) onMove;
+  final VoidCallback onEndMove;
 
   const _DesktopIcon({
     super.key,
     required this.app,
     required this.category,
-    this.focusNode,
+    required this.focusNode,
+    required this.moving,
+    required this.onStartMove,
+    required this.onMove,
+    required this.onEndMove,
     this.autofocus = false,
   });
 
   @override
-  Widget build(BuildContext context) => XpPressable(
-    focusNode: focusNode,
-    autofocus: autofocus,
-    ensureVisibleAlignment: 0.3,
-    onPressed: () => launchXpApp(context, app),
-    onMenu: () => showAppContextMenu(context, app, category: category),
-    builder: (context, focused) => SizedBox(
-      width: 100,
-      height: 92,
-      child: Column(
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: focused ? const Color(0xB3316AC5) : null,
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: focused ? const Color(0xFFFFF3B0) : Colors.transparent, width: 2),
+  Widget build(BuildContext context) => Focus(
+    canRequestFocus: false,
+    skipTraversal: true,
+    // While moving, the arrows slide the icon instead of changing the selection,
+    // and Back drops it where it is.
+    onKeyEvent: (_, event) {
+      if (!moving) {
+        return KeyEventResult.ignored;
+      }
+      final int? steps = _moveKeys[event.logicalKey];
+      if (steps != null) {
+        if (event is! KeyUpEvent) {
+          onMove(steps);
+        }
+        return KeyEventResult.handled;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.goBack || event.logicalKey == LogicalKeyboardKey.escape) {
+        if (event is KeyDownEvent) {
+          onEndMove();
+        }
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    },
+    child: XpPressable(
+      focusNode: focusNode,
+      autofocus: autofocus,
+      ensureVisibleAlignment: 0.3,
+      onPressed: () => moving ? onEndMove() : launchXpApp(context, app),
+      onMenu: () async {
+        if (moving) {
+          onEndMove();
+          return;
+        }
+        final result = await showAppContextMenu(context, app, category: category);
+        if (result == AppContextMenuResult.move) {
+          onStartMove();
+        }
+      },
+      builder: (context, focused) => SizedBox(
+        width: 100,
+        height: _iconHeight,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Column(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: focused || moving ? const Color(0xB3316AC5) : null,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: moving
+                          ? XpColors.orangeLine
+                          : focused ? const Color(0xFFFFF3B0) : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                  child: AppIcon(app.packageName, size: 46),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                  decoration: focused || moving
+                      ? BoxDecoration(
+                          color: XpColors.selection,
+                          border: Border.all(color: const Color(0xFFFFF3B0), width: 1),
+                        )
+                      : null,
+                  child: Text(app.name,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      height: 1.15,
+                      shadows: focused || moving ? null : xpTextShadow,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            child: AppIcon(app.packageName, size: 46),
-          ),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-            decoration: focused
-                ? BoxDecoration(
-                    color: XpColors.selection,
-                    border: Border.all(color: const Color(0xFFFFF3B0), width: 1),
-                  )
-                : null,
-            child: Text(app.name,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                height: 1.15,
-                shadows: focused ? null : xpTextShadow,
+            if (moving)
+              const Positioned(
+                top: -6,
+                right: 6,
+                child: Icon(Icons.open_with, color: Colors.white, size: 22, shadows: xpTextShadow),
               ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );
