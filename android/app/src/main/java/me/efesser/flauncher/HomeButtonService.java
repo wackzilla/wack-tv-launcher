@@ -42,6 +42,8 @@ public class HomeButtonService extends AccessibilityService
     private static final String[] STOCK_HOMES = {
             "com.google.android.tvlauncher",
             "com.google.android.apps.tv.launcherx",
+            // Google TV's fallback screen (a clock on a blurred background) when launcherx is disabled
+            "com.google.android.tungsten.setupwraith",
             "com.google.android.leanbacklauncher",
             "com.amazon.tv.launcher"
     };

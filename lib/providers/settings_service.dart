@@ -45,7 +45,8 @@ const _maxRecentApps = 6;
 
 class SettingsService extends ChangeNotifier {
   static final defaultDateFormat = "EEEE d";
-  static final defaultTimeFormat = "H:mm";
+  // XP's taskbar clock was 12-hour, like "5:02 PM"
+  static final defaultTimeFormat = "h:mm a";
   final SharedPreferences _sharedPreferences;
 
 

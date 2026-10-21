@@ -34,6 +34,9 @@ import 'package:provider/provider.dart';
 
 import 'models/category.dart';
 
+/// The launcher doesn't show itself on its own desktop.
+const _ownPackageName = "com.wack.tvlauncher";
+
 /// The Windows XP style home screen: wallpaper, desktop icons, taskbar and Start menu.
 class FLauncher extends StatefulWidget {
   const FLauncher();
@@ -116,6 +119,7 @@ class _FLauncherState extends State<FLauncher> {
             return Stack(
               children: [
                 Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(
                       child: ExcludeFocus(
@@ -216,6 +220,9 @@ class _FLauncherState extends State<FLauncher> {
         continue;
       }
       for (final app in section.applications) {
+        if (app.packageName == _ownPackageName) {
+          continue;
+        }
         if (!app.hidden && seen.add(app.packageName)) {
           entries.add((app: app, category: section));
         }
@@ -251,11 +258,13 @@ class _DesktopIcon extends StatelessWidget {
       height: 92,
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(2),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
-              color: focused ? const Color(0x80316AC5) : null,
+              color: focused ? const Color(0xB3316AC5) : null,
               borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: focused ? const Color(0xFFFFF3B0) : Colors.transparent, width: 2),
             ),
             child: AppIcon(app.packageName, size: 46),
           ),
