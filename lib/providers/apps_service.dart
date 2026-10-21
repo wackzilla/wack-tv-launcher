@@ -282,6 +282,8 @@ class AppsService extends ChangeNotifier
 
   Future<void> openLiveTv() => _fLauncherChannel.openLiveTv();
 
+  Future<bool> hasLiveTv() => _fLauncherChannel.hasLiveTv();
+
   Future<bool> isHomeServiceEnabled() => _fLauncherChannel.isHomeServiceEnabled();
 
   Future<bool> standBy() => _fLauncherChannel.standBy();

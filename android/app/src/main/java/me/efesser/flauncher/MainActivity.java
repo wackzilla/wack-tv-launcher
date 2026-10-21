@@ -93,6 +93,7 @@ public class MainActivity extends FlutterActivity
                 case "getTvInputs" -> result.success(getTvInputs());
                 case "openTvInput" -> result.success(openTvInput(call.arguments()));
                 case "openLiveTv" -> result.success(openLiveTv());
+                case "hasLiveTv" -> result.success(hasLiveTv());
                 case "isHomeServiceEnabled" -> result.success(isHomeServiceEnabled());
                 case "standBy" -> result.success(standBy());
                 case "showPowerDialog" -> result.success(showPowerDialog());
@@ -403,8 +404,10 @@ public class MainActivity extends FlutterActivity
             }
 
             for (TvInputInfo input : tvInputManager.getTvInputList()) {
-                if (input.getParentId() != null) continue;           // HDMI-CEC devices hang off their port
-                if (input.getType() == TvInputInfo.TYPE_TUNER) continue;
+                // Only physical inputs: apps like Peacock register "preview" inputs that aren't
+                // something you can switch to. HDMI-CEC devices hang off their port.
+                if (!input.isPassthroughInput()) continue;
+                if (input.getParentId() != null) continue;
                 if (input.isHidden(this)) continue;
 
                 CharSequence label = input.loadCustomLabel(this);
@@ -438,17 +441,26 @@ public class MainActivity extends FlutterActivity
         return openLiveTv();
     }
 
-    private boolean openLiveTv()
+    private Intent liveTvIntent()
     {
         PackageManager packageManager = getPackageManager();
         Intent intent = packageManager.getLeanbackLaunchIntentForPackage(TV_APP);
         if (intent == null) {
             intent = packageManager.getLaunchIntentForPackage(TV_APP);
         }
-        if (intent == null) {
-            intent = new Intent(Intent.ACTION_VIEW, TvContract.Channels.CONTENT_URI);
-        }
-        return tryStartActivity(intent);
+        return intent;
+    }
+
+    /** Streaming boxes have no tuner app, so the Start menu hides "My TV" there. */
+    private boolean hasLiveTv()
+    {
+        return liveTvIntent() != null;
+    }
+
+    private boolean openLiveTv()
+    {
+        Intent intent = liveTvIntent();
+        return intent != null && tryStartActivity(intent);
     }
 
     private boolean isHomeServiceEnabled()

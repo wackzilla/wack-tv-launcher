@@ -142,7 +142,7 @@ class _FLauncherState extends State<FLauncher> {
                     child: LayoutBuilder(
                       builder: (context, _) {
                         final double height = MediaQuery.sizeOf(context).height - taskbarHeight - 24;
-                        return StartMenu(height: height.clamp(300, 480));
+                        return StartMenu(height: height.clamp(300.0, 480.0));
                       },
                     ),
                   ),

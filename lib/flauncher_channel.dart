@@ -74,6 +74,8 @@ class FLauncherChannel {
 
   Future<void> openLiveTv() async => await _methodChannel.invokeMethod("openLiveTv");
 
+  Future<bool> hasLiveTv() async => await _methodChannel.invokeMethod("hasLiveTv");
+
   Future<bool> isHomeServiceEnabled() async => await _methodChannel.invokeMethod("isHomeServiceEnabled");
 
   Future<bool> standBy() async => await _methodChannel.invokeMethod("standBy");

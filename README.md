@@ -34,15 +34,25 @@ Every push to `master` builds a signed APK with GitHub Actions (**Actions** tab 
 .\install.ps1
 ```
 
-This downloads the latest build, installs it on the TV over ADB, disables the stock launcher, and turns on the Home button service. Pass a path to install a specific APK: `.\install.ps1 C:\path\to\wack-xp.apk`.
+This downloads the latest build and installs it over ADB, by default on the office onn box at `192.168.0.109`. It makes Wack XP the home screen and turns on its Home button service in place of any other launcher's. For the Philips TV, use `.\install.ps1 -Tv 192.168.0.112:5555`. To install a specific APK, pass its path.
 
 ## Undo
+
+Back to Projectivy on the office onn box:
+
+```powershell
+adb -s 192.168.0.109:5555 shell settings put secure enabled_accessibility_services com.spocky.projengmenu/com.spocky.projengmenu.services.ProjectivyAccessibilityService
+adb -s 192.168.0.109:5555 shell cmd package set-home-activity com.spocky.projengmenu/.ui.home.MainActivity
+```
+
+Back to the stock home screen on the Philips TV:
 
 ```powershell
 adb -s 192.168.0.112:5555 shell settings put secure enabled_accessibility_services '""'
 adb -s 192.168.0.112:5555 shell pm enable com.google.android.tvlauncher
-adb -s 192.168.0.112:5555 uninstall com.wack.tvlauncher
 ```
+
+To remove Wack XP from either one: `adb -s <ip>:5555 uninstall com.wack.tvlauncher`
 
 ## License
 

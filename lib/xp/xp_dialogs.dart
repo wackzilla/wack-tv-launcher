@@ -16,6 +16,7 @@
  */
 
 import 'package:flauncher/providers/apps_service.dart';
+import 'package:flauncher/providers/launcher_state.dart';
 import 'package:flauncher/xp/xp_style.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -33,6 +34,7 @@ class _TurnOffDialog extends StatelessWidget
   @override
   Widget build(BuildContext context) {
     final appsService = context.read<AppsService>();
+    final navigatorKey = context.read<LauncherState>().navigatorKey;
 
     Future<void> standBy() async {
       Navigator.of(context).pop();
@@ -42,8 +44,10 @@ class _TurnOffDialog extends StatelessWidget
     Future<void> powerMenu() async {
       Navigator.of(context).pop();
       if (!await appsService.showPowerDialog()) {
-        if (context.mounted) {
-          await showHomeServiceHelp(context, reason: "Turning off or restarting the TV from here");
+        // This dialog is gone by now, so show the help from the app's own navigator.
+        final appContext = navigatorKey.currentContext;
+        if (appContext != null && appContext.mounted) {
+          await showHomeServiceHelp(appContext, reason: "Turning off or restarting the TV from here");
         }
       }
     }

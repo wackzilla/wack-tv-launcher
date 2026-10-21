@@ -46,13 +46,20 @@ class _StartMenuState extends State<StartMenu>
   bool _allPrograms = false;
   bool _inputsExpanded = false;
   List<TvInput> _inputs = const [];
+  bool _hasLiveTv = false;
 
   @override
   void initState() {
     super.initState();
-    context.read<AppsService>().getTvInputs().then((inputs) {
+    final appsService = context.read<AppsService>();
+    appsService.getTvInputs().then((inputs) {
       if (mounted) {
         setState(() => _inputs = inputs);
+      }
+    });
+    appsService.hasLiveTv().then((hasLiveTv) {
+      if (mounted) {
+        setState(() => _hasLiveTv = hasLiveTv);
       }
     });
   }
@@ -195,27 +202,25 @@ class _StartMenuState extends State<StartMenu>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _PlaceItem(
-              label: "My TV",
-              icon: Icons.live_tv,
-              iconColor: const Color(0xFF2B5BC6),
-              bold: true,
-              onPressed: () => closeThen(appsService.openLiveTv),
-            ),
-            _PlaceItem(
-              label: "TV Inputs",
-              icon: Icons.settings_input_hdmi,
-              iconColor: const Color(0xFF555555),
-              bold: true,
-              trailing: Icon(_inputsExpanded ? Icons.expand_less : Icons.chevron_right, size: 16, color: XpColors.textBlue),
-              onPressed: () => setState(() => _inputsExpanded = !_inputsExpanded),
-            ),
-            if (_inputsExpanded) ...[
-              if (_inputs.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(40, 4, 8, 4),
-                  child: Text("No inputs found", style: TextStyle(color: XpColors.textGrey, fontSize: 12)),
-                ),
+            // Only on TVs: streaming boxes have no tuner app and no inputs to switch to.
+            if (_hasLiveTv)
+              _PlaceItem(
+                label: "My TV",
+                icon: Icons.live_tv,
+                iconColor: const Color(0xFF2B5BC6),
+                bold: true,
+                onPressed: () => closeThen(appsService.openLiveTv),
+              ),
+            if (_inputs.isNotEmpty)
+              _PlaceItem(
+                label: "TV Inputs",
+                icon: Icons.settings_input_hdmi,
+                iconColor: const Color(0xFF555555),
+                bold: true,
+                trailing: Icon(_inputsExpanded ? Icons.expand_less : Icons.chevron_right, size: 16, color: XpColors.textBlue),
+                onPressed: () => setState(() => _inputsExpanded = !_inputsExpanded),
+              ),
+            if (_inputsExpanded)
               for (final input in _inputs)
                 _PlaceItem(
                   label: input.label,
@@ -224,8 +229,8 @@ class _StartMenuState extends State<StartMenu>
                   indent: true,
                   onPressed: () => closeThen(() => appsService.openTvInput(input)),
                 ),
-            ],
-            const _Separator(color: XpColors.startMenuRightBorder),
+            if (_hasLiveTv || _inputs.isNotEmpty)
+              const _Separator(color: XpColors.startMenuRightBorder),
             _PlaceItem(
               label: "Control Panel",
               icon: Icons.tune,
