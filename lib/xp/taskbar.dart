@@ -188,11 +188,30 @@ class _SystemTray extends StatelessWidget
           child: NetworkWidget(),
         ),
         const SizedBox(width: 12),
-        Selector<SettingsService, String>(
-          selector: (_, settings) => settings.timeFormat,
-          builder: (_, timeFormat, __) => DateTimeWidget(timeFormat,
-            key: ValueKey(timeFormat),
-            textStyle: const TextStyle(color: Colors.white, fontSize: 15, shadows: xpTextShadow),
+        // Time over date, like the Windows 11 taskbar clock
+        Selector<SettingsService, ({String timeFormat, String dateFormat, bool showTime, bool showDate})>(
+          selector: (_, settings) => (
+            timeFormat: settings.timeFormat,
+            dateFormat: settings.dateFormat,
+            showTime: settings.showTimeInStatusBar,
+            showDate: settings.showDateInStatusBar,
+          ),
+          builder: (_, clock, __) => Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (clock.showTime)
+                DateTimeWidget(clock.timeFormat,
+                  key: ValueKey("time ${clock.timeFormat}"),
+                  textStyle: const TextStyle(color: Colors.white, fontSize: 13, height: 1.2, shadows: xpTextShadow),
+                ),
+              if (clock.showDate)
+                DateTimeWidget(clock.dateFormat,
+                  key: ValueKey("date ${clock.dateFormat}"),
+                  updateInterval: const Duration(minutes: 1),
+                  textStyle: const TextStyle(color: Colors.white, fontSize: 13, height: 1.2, shadows: xpTextShadow),
+                ),
+            ],
           ),
         ),
       ],

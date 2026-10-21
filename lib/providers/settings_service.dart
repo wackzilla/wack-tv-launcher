@@ -44,8 +44,8 @@ const _userName = "user_name";
 const _maxRecentApps = 6;
 
 class SettingsService extends ChangeNotifier {
-  static final defaultDateFormat = "EEEE d";
-  // XP's taskbar clock was 12-hour, like "5:02 PM"
+  // The taskbar clock shows time over date like Windows 11: "5:07 PM" / "10/21/2026"
+  static final defaultDateFormat = "M/d/yyyy";
   static final defaultTimeFormat = "h:mm a";
   final SharedPreferences _sharedPreferences;
 
