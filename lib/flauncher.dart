@@ -349,6 +349,8 @@ class _DesktopIcon extends StatelessWidget {
         width: 100,
         height: _iconHeight,
         child: Stack(
+          // Expand so every icon is centred in the same fixed-width slot, whatever its label's width
+          fit: StackFit.expand,
           clipBehavior: Clip.none,
           children: [
             Column(

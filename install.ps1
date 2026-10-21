@@ -15,8 +15,12 @@ if (-not $Apk) {
   if (-not $gh) { $gh = "C:\Program Files\GitHub CLI\gh.exe" }
   $dir = Join-Path $env:TEMP "wack-xp-build"
   Remove-Item -Recurse -Force $dir -ErrorAction SilentlyContinue
-  Write-Host "Downloading the latest build..."
-  & $gh run download --repo wackzilla/wack-tv-launcher --name wack-xp --dir $dir
+  # Without a run id, gh can pick an older run's artifact, so ask for the newest successful build.
+  $run = & $gh run list --repo wackzilla/wack-tv-launcher --workflow build.yml --branch master --status success --limit 1 --json databaseId,headSha --jq '.[0] | "\(.databaseId) \(.headSha[0:7])"'
+  if (-not $run) { Write-Host "No successful build found." -ForegroundColor Yellow; exit 1 }
+  $runId, $commit = $run -split " "
+  Write-Host "Downloading build $runId (commit $commit)..."
+  & $gh run download $runId --repo wackzilla/wack-tv-launcher --name wack-xp --dir $dir
   if ($LASTEXITCODE -ne 0) { Write-Host "Download failed." -ForegroundColor Yellow; exit 1 }
   $Apk = Join-Path $dir "wack-xp.apk"
 }
@@ -51,9 +55,9 @@ if ($previousServices -and $previousServices -ne "null" -and $previousServices -
 Write-Host "Making Wack XP the home screen"
 adb -s $Tv shell cmd package set-home-activity $activity | Out-Null
 
-$enabled = adb -s $Tv shell pm list packages -e
 foreach ($stock in $stockHomes) {
-  if ($enabled -match "package:$([regex]::Escape($stock))`$") {
+  $state = adb -s $Tv shell pm list packages -e $stock
+  if ("$state".Trim() -eq "package:$stock") {
     Write-Host "Disabling stock launcher $stock"
     adb -s $Tv shell pm disable-user --user 0 $stock | Out-Null
   }
