@@ -136,6 +136,58 @@ class _XpPressableState extends State<XpPressable>
   );
 }
 
+/// While [moving], the arrows slide the item instead of changing the selection, and Back
+/// drops it where it is. [onMove] gets -1/+1 for up/down and -2/+2 for left/right.
+/// OK is handled by the item itself, which should call [onEndMove] when moving.
+class XpMoveKeys extends StatelessWidget
+{
+  static final _steps = {
+    LogicalKeyboardKey.arrowUp: -1,
+    LogicalKeyboardKey.arrowDown: 1,
+    LogicalKeyboardKey.arrowLeft: -2,
+    LogicalKeyboardKey.arrowRight: 2,
+  };
+
+  final bool moving;
+  final void Function(int steps) onMove;
+  final VoidCallback onEndMove;
+  final Widget child;
+
+  const XpMoveKeys({
+    super.key,
+    required this.moving,
+    required this.onMove,
+    required this.onEndMove,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) => Focus(
+    canRequestFocus: false,
+    skipTraversal: true,
+    onKeyEvent: (_, event) {
+      if (!moving) {
+        return KeyEventResult.ignored;
+      }
+      final int? steps = _steps[event.logicalKey];
+      if (steps != null) {
+        if (event is! KeyUpEvent) {
+          onMove(steps);
+        }
+        return KeyEventResult.handled;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.goBack || event.logicalKey == LogicalKeyboardKey.escape) {
+        if (event is KeyDownEvent) {
+          onEndMove();
+        }
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    },
+    child: child,
+  );
+}
+
 /// An XP window: rounded blue title bar with the minimize/maximize/close buttons and a beige face.
 class XpWindow extends StatelessWidget
 {

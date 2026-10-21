@@ -277,13 +277,6 @@ class _FLauncherState extends State<FLauncher> {
 }
 
 class _DesktopIcon extends StatelessWidget {
-  static final _moveKeys = {
-    LogicalKeyboardKey.arrowUp: -1,
-    LogicalKeyboardKey.arrowDown: 1,
-    LogicalKeyboardKey.arrowLeft: -2,
-    LogicalKeyboardKey.arrowRight: 2,
-  };
-
   final App app;
   final Category category;
   final FocusNode focusNode;
@@ -306,30 +299,10 @@ class _DesktopIcon extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Focus(
-    canRequestFocus: false,
-    skipTraversal: true,
-    // While moving, the arrows slide the icon instead of changing the selection,
-    // and Back drops it where it is.
-    onKeyEvent: (_, event) {
-      if (!moving) {
-        return KeyEventResult.ignored;
-      }
-      final int? steps = _moveKeys[event.logicalKey];
-      if (steps != null) {
-        if (event is! KeyUpEvent) {
-          onMove(steps);
-        }
-        return KeyEventResult.handled;
-      }
-      if (event.logicalKey == LogicalKeyboardKey.goBack || event.logicalKey == LogicalKeyboardKey.escape) {
-        if (event is KeyDownEvent) {
-          onEndMove();
-        }
-        return KeyEventResult.handled;
-      }
-      return KeyEventResult.ignored;
-    },
+  Widget build(BuildContext context) => XpMoveKeys(
+    moving: moving,
+    onMove: onMove,
+    onEndMove: onEndMove,
     child: XpPressable(
       focusNode: focusNode,
       autofocus: autofocus,

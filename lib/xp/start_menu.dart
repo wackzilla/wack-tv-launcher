@@ -47,6 +47,7 @@ class _StartMenuState extends State<StartMenu>
   bool _inputsExpanded = false;
   List<TvInput> _inputs = const [];
   bool _hasLiveTv = false;
+  String? _movingPin;
 
   @override
   void initState() {
@@ -140,10 +141,28 @@ class _StartMenuState extends State<StartMenu>
                     ),
                   ),
                 for (int i = 0; i < pinned.length; i++)
-                  _ProgramItem(app: pinned[i], large: true, autofocus: i == 0),
+                  _ProgramItem(
+                    key: ValueKey("pinned ${pinned[i].packageName}"),
+                    app: pinned[i],
+                    large: true,
+                    autofocus: i == 0,
+                    moving: _movingPin == pinned[i].packageName,
+                    onStartMove: () => setState(() => _movingPin = pinned[i].packageName),
+                    // Up and down move one place; left and right do nothing in a single column.
+                    onMove: (steps) {
+                      if (steps.abs() == 1) {
+                        settingsService.moveStartMenuPin(pinned[i].packageName, steps);
+                      }
+                    },
+                    onEndMove: () => setState(() => _movingPin = null),
+                  ),
                 if (recent.isNotEmpty) const _Separator(color: Color(0xFFD5D2CA)),
                 for (int i = 0; i < recent.length; i++)
-                  _ProgramItem(app: recent[i], autofocus: pinned.isEmpty && i == 0),
+                  _ProgramItem(
+                    key: ValueKey("recent ${recent[i].packageName}"),
+                    app: recent[i],
+                    autofocus: pinned.isEmpty && i == 0,
+                  ),
               ],
             ),
           ),
@@ -179,7 +198,7 @@ class _StartMenuState extends State<StartMenu>
           child: ListView.builder(
             padding: const EdgeInsets.only(bottom: 6),
             itemCount: apps.length,
-            itemBuilder: (context, index) => _ProgramItem(app: apps[index]),
+            itemBuilder: (context, index) => _ProgramItem(key: ValueKey(apps[index].packageName), app: apps[index]),
           ),
         ),
       ],
@@ -359,23 +378,54 @@ class _Header extends StatelessWidget
   );
 }
 
+/// An app in the Start menu. Pinned apps (the large ones) can be moved, so they pass
+/// [onStartMove], [onMove] and [onEndMove].
 class _ProgramItem extends StatelessWidget
 {
   final App app;
   final bool large;
   final bool autofocus;
+  final bool moving;
+  final VoidCallback? onStartMove;
+  final void Function(int steps)? onMove;
+  final VoidCallback? onEndMove;
 
-  const _ProgramItem({required this.app, this.large = false, this.autofocus = false});
+  const _ProgramItem({
+    super.key,
+    required this.app,
+    this.large = false,
+    this.autofocus = false,
+    this.moving = false,
+    this.onStartMove,
+    this.onMove,
+    this.onEndMove,
+  });
 
   @override
-  Widget build(BuildContext context) => _StartMenuItem(
-    label: app.name,
-    sublabel: app.hidden ? "Hidden from desktop" : null,
-    bold: large,
-    autofocus: autofocus,
-    leading: AppIcon(app.packageName, size: large ? 32 : 24),
-    onPressed: () => launchXpApp(context, app),
-    onMenu: () => showAppContextMenu(context, app),
+  Widget build(BuildContext context) => XpMoveKeys(
+    moving: moving,
+    onMove: (steps) => onMove?.call(steps),
+    onEndMove: () => onEndMove?.call(),
+    child: _StartMenuItem(
+      label: app.name,
+      sublabel: app.hidden ? "Hidden from desktop" : null,
+      bold: large,
+      autofocus: autofocus,
+      moving: moving,
+      leading: AppIcon(app.packageName, size: large ? 32 : 24),
+      onPressed: () => moving ? onEndMove?.call() : launchXpApp(context, app),
+      onMenu: () async {
+        if (moving) {
+          onEndMove?.call();
+          return;
+        }
+        final result = await showAppContextMenu(context, app,
+            pinnedIn: onStartMove != null ? PinnedIn.startMenu : null);
+        if (result == AppContextMenuResult.move) {
+          onStartMove?.call();
+        }
+      },
+    ),
   );
 }
 
@@ -385,6 +435,7 @@ class _StartMenuItem extends StatelessWidget
   final String? sublabel;
   final bool bold;
   final bool autofocus;
+  final bool moving;
   final Widget? leading;
   final Widget? trailing;
   final VoidCallback onPressed;
@@ -396,6 +447,7 @@ class _StartMenuItem extends StatelessWidget
     this.sublabel,
     this.bold = false,
     this.autofocus = false,
+    this.moving = false,
     this.leading,
     this.trailing,
     this.onMenu,
@@ -410,8 +462,9 @@ class _StartMenuItem extends StatelessWidget
       margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       decoration: BoxDecoration(
-        color: focused ? XpColors.selection : null,
+        color: focused || moving ? XpColors.selection : null,
         borderRadius: BorderRadius.circular(2),
+        border: Border.all(color: moving ? XpColors.orangeLine : Colors.transparent, width: 2),
       ),
       child: Row(
         children: [
@@ -425,18 +478,19 @@ class _StartMenuItem extends StatelessWidget
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: focused ? Colors.white : XpColors.textDark,
+                    color: focused || moving ? Colors.white : XpColors.textDark,
                     fontSize: 14,
                     fontWeight: bold ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
                 if (sublabel != null)
                   Text(sublabel!,
-                    style: TextStyle(color: focused ? Colors.white70 : XpColors.textGrey, fontSize: 11),
+                    style: TextStyle(color: focused || moving ? Colors.white70 : XpColors.textGrey, fontSize: 11),
                   ),
               ],
             ),
           ),
+          if (moving) const Icon(Icons.swap_vert, size: 20, color: Colors.white),
           if (trailing != null) trailing!,
         ],
       ),

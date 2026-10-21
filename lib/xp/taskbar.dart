@@ -30,7 +30,7 @@ import 'package:provider/provider.dart';
 
 const taskbarHeight = 44.0;
 
-class Taskbar extends StatelessWidget
+class Taskbar extends StatefulWidget
 {
   final FocusNode startButtonFocusNode;
   final bool startButtonAutofocus;
@@ -38,9 +38,18 @@ class Taskbar extends StatelessWidget
   const Taskbar({super.key, required this.startButtonFocusNode, this.startButtonAutofocus = false});
 
   @override
+  State<Taskbar> createState() => _TaskbarState();
+}
+
+class _TaskbarState extends State<Taskbar>
+{
+  String? _movingPackage;
+
+  @override
   Widget build(BuildContext context) {
     final appsService = context.watch<AppsService>();
-    final pinned = context.watch<SettingsService>().taskbarPinned
+    final settingsService = context.watch<SettingsService>();
+    final pinned = settingsService.taskbarPinned
         .map(appsService.findApplication)
         .whereType<App>()
         .toList();
@@ -57,11 +66,24 @@ class Taskbar extends StatelessWidget
       ),
       child: Row(
         children: [
-          _StartButton(focusNode: startButtonFocusNode, autofocus: startButtonAutofocus),
+          _StartButton(focusNode: widget.startButtonFocusNode, autofocus: widget.startButtonAutofocus),
           const SizedBox(width: 8),
           if (pinned.isNotEmpty) ...[
             const _QuickLaunchGrip(),
-            for (final app in pinned) _TaskbarAppButton(app: app),
+            for (final app in pinned)
+              _TaskbarAppButton(
+                key: ValueKey(app.packageName),
+                app: app,
+                moving: _movingPackage == app.packageName,
+                onStartMove: () => setState(() => _movingPackage = app.packageName),
+                // Left and right move one place; up and down do nothing on a single row.
+                onMove: (steps) {
+                  if (steps.abs() == 2) {
+                    settingsService.moveTaskbarPin(app.packageName, steps.sign);
+                  }
+                },
+                onEndMove: () => setState(() => _movingPackage = null),
+              ),
           ],
           const Spacer(),
           const _SystemTray(),
@@ -144,22 +166,50 @@ class _QuickLaunchGrip extends StatelessWidget
 class _TaskbarAppButton extends StatelessWidget
 {
   final App app;
+  final bool moving;
+  final VoidCallback onStartMove;
+  final void Function(int steps) onMove;
+  final VoidCallback onEndMove;
 
-  const _TaskbarAppButton({required this.app});
+  const _TaskbarAppButton({
+    super.key,
+    required this.app,
+    required this.moving,
+    required this.onStartMove,
+    required this.onMove,
+    required this.onEndMove,
+  });
 
   @override
-  Widget build(BuildContext context) => XpPressable(
-    onPressed: () => launchXpApp(context, app),
-    onMenu: () => showAppContextMenu(context, app),
-    builder: (context, focused) => Container(
-      margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: focused ? const Color(0x553D95FF) : null,
-        borderRadius: BorderRadius.circular(3),
-        border: Border.all(color: focused ? Colors.white : Colors.transparent),
+  Widget build(BuildContext context) => XpMoveKeys(
+    moving: moving,
+    onMove: onMove,
+    onEndMove: onEndMove,
+    child: XpPressable(
+      onPressed: () => moving ? onEndMove() : launchXpApp(context, app),
+      onMenu: () async {
+        if (moving) {
+          onEndMove();
+          return;
+        }
+        final result = await showAppContextMenu(context, app, pinnedIn: PinnedIn.taskbar);
+        if (result == AppContextMenuResult.move) {
+          onStartMove();
+        }
+      },
+      builder: (context, focused) => Container(
+        margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: focused || moving ? const Color(0x553D95FF) : null,
+          borderRadius: BorderRadius.circular(3),
+          border: Border.all(
+            color: moving ? XpColors.orangeLine : focused ? Colors.white : Colors.transparent,
+            width: moving ? 2 : 1,
+          ),
+        ),
+        child: AppIcon(app.packageName, size: 26),
       ),
-      child: AppIcon(app.packageName, size: 26),
     ),
   );
 }

@@ -105,6 +105,31 @@ class SettingsService extends ChangeNotifier {
   Future<void> toggleTaskbarPin(String packageName) =>
       _toggleInList(_taskbarPinned, taskbarPinned, packageName);
 
+  /// Moves a pinned app [delta] places along the Start menu's pinned list.
+  Future<void> moveStartMenuPin(String packageName, int delta) =>
+      _moveInList(_startMenuPinned, startMenuPinned, packageName, delta);
+
+  /// Moves a pinned app [delta] places along the taskbar.
+  Future<void> moveTaskbarPin(String packageName, int delta) =>
+      _moveInList(_taskbarPinned, taskbarPinned, packageName, delta);
+
+  Future<void> _moveInList(String key, List<String> current, String packageName, int delta) async {
+    List<String> list = List.of(current);
+    int oldIndex = list.indexOf(packageName);
+    if (oldIndex < 0) {
+      return;
+    }
+
+    int newIndex = (oldIndex + delta).clamp(0, list.length - 1);
+    if (newIndex == oldIndex) {
+      return;
+    }
+
+    list.insert(newIndex, list.removeAt(oldIndex));
+    await _sharedPreferences.setStringList(key, list);
+    notifyListeners();
+  }
+
   Future<void> addRecentApp(String packageName) async {
     List<String> recent = List.of(recentApps)
       ..remove(packageName)

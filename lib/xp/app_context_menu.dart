@@ -39,17 +39,21 @@ Future<void> launchXpApp(BuildContext context, App app) async {
 /// What the app menu asks its caller to do once it closes.
 enum AppContextMenuResult { move }
 
+/// Where a pinned app was picked from, so the menu can offer to move it there.
+enum PinnedIn { startMenu, taskbar }
+
 /// The menu shown when OK is held, or Menu is pressed, on an app. [category] is the
-/// desktop group the app was picked from, if any.
-Future<AppContextMenuResult?> showAppContextMenu(BuildContext context, App app, {Category? category}) =>
-    showXpDialog<AppContextMenuResult>(context, _AppContextMenu(app: app, category: category));
+/// desktop group the app was picked from, and [pinnedIn] the pinned list, if any.
+Future<AppContextMenuResult?> showAppContextMenu(BuildContext context, App app, {Category? category, PinnedIn? pinnedIn}) =>
+    showXpDialog<AppContextMenuResult>(context, _AppContextMenu(app: app, category: category, pinnedIn: pinnedIn));
 
 class _AppContextMenu extends StatelessWidget
 {
   final App app;
   final Category? category;
+  final PinnedIn? pinnedIn;
 
-  const _AppContextMenu({required this.app, required this.category});
+  const _AppContextMenu({required this.app, required this.category, required this.pinnedIn});
 
   @override
   Widget build(BuildContext context) {
@@ -116,6 +120,12 @@ class _AppContextMenu extends StatelessWidget
               close();
             },
           ),
+          if (pinnedIn != null)
+            XpMenuItem(
+              label: pinnedIn == PinnedIn.startMenu ? "Move in Start menu" : "Move on Taskbar",
+              icon: Icons.open_with,
+              onPressed: () => Navigator.of(context).pop(AppContextMenuResult.move),
+            ),
           if (canMove) ...[
             XpMenuItem(
               label: "Move",
