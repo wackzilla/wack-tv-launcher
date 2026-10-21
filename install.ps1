@@ -66,7 +66,10 @@ foreach ($stock in $stockHomes) {
 Write-Host "Turning on the Wack XP Home button service"
 adb -s $Tv shell settings put secure enabled_accessibility_services $service
 adb -s $Tv shell settings put secure accessibility_enabled 1
-adb -s $Tv shell input keyevent KEYCODE_HOME
+# The service restarts with the update and misses the stock home screen coming up,
+# so open Wack XP directly rather than relying on a Home press.
+Start-Sleep -Seconds 2
+adb -s $Tv shell am start -n $activity | Out-Null
 
 # To undo:
 #   adb -s <tv> shell settings put secure enabled_accessibility_services <previous service, or '""'>
