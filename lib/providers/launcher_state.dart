@@ -18,7 +18,6 @@
 
 import 'package:flauncher/providers/settings_service.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
@@ -27,16 +26,46 @@ import 'apps_service.dart';
 
 class LauncherState extends ChangeNotifier
 {
+  /// Lets the Home button close any dialog or menu that's open on top of the desktop.
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   bool _isDefaultLauncher;
   bool _launcherVisible;
+  bool _startMenuOpen;
+  int _homePressedCount;
 
   bool  get isDefaultLauncher => _isDefaultLauncher;
   bool  get launcherVisible => _launcherVisible;
+  bool  get startMenuOpen => _startMenuOpen;
 
-  LauncherState() : _isDefaultLauncher = false, _launcherVisible = true;
+  /// Increases every time the Home button is pressed, so the desktop knows to take focus back.
+  int   get homePressedCount => _homePressedCount;
+
+  LauncherState() :
+    _isDefaultLauncher = false,
+    _launcherVisible = true,
+    _startMenuOpen = false,
+    _homePressedCount = 0;
 
   void toggleLauncherVisibility() {
     _launcherVisible = !_launcherVisible;
+    notifyListeners();
+  }
+
+  void setStartMenuOpen(bool open) {
+    if (_startMenuOpen != open) {
+      _startMenuOpen = open;
+      notifyListeners();
+    }
+  }
+
+  void toggleStartMenu() => setStartMenuOpen(!_startMenuOpen);
+
+  void goHome() {
+    navigatorKey.currentState?.popUntil((route) => route.isFirst);
+    _startMenuOpen = false;
+    _launcherVisible = true;
+    _homePressedCount++;
     notifyListeners();
   }
 
@@ -50,21 +79,23 @@ class LauncherState extends ChangeNotifier
     LauncherState launcherState = context.read<LauncherState>();
     SettingsService settingsService = context.read<SettingsService>();
 
-    if (kDebugMode || launcherState.isDefaultLauncher) {
-      launcherState.refresh(appsService);
-      String action = settingsService.backButtonAction;
-
-      switch (action) {
-        case BACK_BUTTON_ACTION_CLOCK:
-          launcherState.toggleLauncherVisibility();
-          break;
-        case BACK_BUTTON_ACTION_SCREENSAVER:
-          appsService.startAmbientMode();
-          break;
-      }
+    if (launcherState.startMenuOpen) {
+      launcherState.setStartMenuOpen(false);
+      return;
     }
-    else {
-      SystemNavigator.pop();
+
+    // This is the home screen, even when the Home button service (rather than Android's
+    // default launcher setting) is what keeps it there, so Back never closes it.
+    launcherState.refresh(appsService);
+    String action = settingsService.backButtonAction;
+
+    switch (action) {
+      case BACK_BUTTON_ACTION_CLOCK:
+        launcherState.toggleLauncherVisibility();
+        break;
+      case BACK_BUTTON_ACTION_SCREENSAVER:
+        appsService.startAmbientMode();
+        break;
     }
   }
 }

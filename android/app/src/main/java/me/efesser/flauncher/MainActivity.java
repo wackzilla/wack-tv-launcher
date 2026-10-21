@@ -25,6 +25,9 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.media.tv.TvContract;
+import android.media.tv.TvInputInfo;
+import android.media.tv.TvInputManager;
 import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.Build;
@@ -58,6 +61,11 @@ public class MainActivity extends FlutterActivity
     private final String APPS_EVENT_CHANNEL = "me.efesser.flauncher/event_apps";
     private final String NETWORK_EVENT_CHANNEL = "me.efesser.flauncher/event_network";
 
+    static final String ACTION_HOME_PRESSED = "com.wack.tvlauncher.HOME_PRESSED";
+    private static final String TV_APP = "com.mediatek.wwtv.tvcenter";
+
+    private MethodChannel methodChannel;
+
     @Override
     public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine)
     {
@@ -65,7 +73,8 @@ public class MainActivity extends FlutterActivity
 
         BinaryMessenger messenger = flutterEngine.getDartExecutor().getBinaryMessenger();
 
-        new MethodChannel(messenger, METHOD_CHANNEL).setMethodCallHandler((call, result) -> {
+        methodChannel = new MethodChannel(messenger, METHOD_CHANNEL);
+        methodChannel.setMethodCallHandler((call, result) -> {
             switch (call.method)
             {
                 case "getApplications" -> result.success(getApplications());
@@ -81,6 +90,12 @@ public class MainActivity extends FlutterActivity
                 case "checkForGetContentAvailability" -> result.success(checkForGetContentAvailability());
                 case "startAmbientMode" -> result.success(startAmbientMode());
                 case "getActiveNetworkInformation" -> result.success(getActiveNetworkInformation());
+                case "getTvInputs" -> result.success(getTvInputs());
+                case "openTvInput" -> result.success(openTvInput(call.arguments()));
+                case "openLiveTv" -> result.success(openLiveTv());
+                case "isHomeServiceEnabled" -> result.success(isHomeServiceEnabled());
+                case "standBy" -> result.success(standBy());
+                case "showPowerDialog" -> result.success(showPowerDialog());
                 default -> throw new IllegalArgumentException();
             }
         });
@@ -90,6 +105,19 @@ public class MainActivity extends FlutterActivity
 
         new EventChannel(messenger, NETWORK_EVENT_CHANNEL).setStreamHandler(
                 new NetworkEventStreamHandler(this));
+    }
+
+    @Override
+    protected void onNewIntent(@NonNull Intent intent) {
+        super.onNewIntent(intent);
+
+        // Either the Home button service brought us back, or Android delivered the Home
+        // intent to us as the default launcher: let the UI close menus and return to the desktop.
+        boolean homeIntent = ACTION_HOME_PRESSED.equals(intent.getAction())
+                || (Intent.ACTION_MAIN.equals(intent.getAction()) && intent.hasCategory(Intent.CATEGORY_HOME));
+        if (homeIntent && methodChannel != null) {
+            methodChannel.invokeMethod("homePressed", null);
+        }
     }
 
     private List<Map<String, Serializable>> getApplications() {
@@ -361,6 +389,87 @@ public class MainActivity extends FlutterActivity
             //noinspection deprecation
             return NetworkUtils.getNetworkInformation(this, connectivityManager.getActiveNetworkInfo());
         }
+    }
+
+    /** HDMI, AV and other physical inputs the TV reports. The antenna tuner is covered by Live TV. */
+    private List<Map<String, Serializable>> getTvInputs()
+    {
+        List<Map<String, Serializable>> inputs = new ArrayList<>();
+
+        try {
+            TvInputManager tvInputManager = (TvInputManager) getSystemService(Context.TV_INPUT_SERVICE);
+            if (tvInputManager == null) {
+                return inputs;
+            }
+
+            for (TvInputInfo input : tvInputManager.getTvInputList()) {
+                if (input.getParentId() != null) continue;           // HDMI-CEC devices hang off their port
+                if (input.getType() == TvInputInfo.TYPE_TUNER) continue;
+                if (input.isHidden(this)) continue;
+
+                CharSequence label = input.loadCustomLabel(this);
+                if (label == null || label.length() == 0) {
+                    label = input.loadLabel(this);
+                }
+
+                HashMap<String, Serializable> map = new HashMap<>();
+                map.put("id", input.getId());
+                map.put("label", label != null ? label.toString() : "Input");
+                map.put("type", input.getType());
+                inputs.add(map);
+            }
+        } catch (Exception ignored) { }
+
+        return inputs;
+    }
+
+    private boolean openTvInput(String inputId)
+    {
+        PackageManager packageManager = getPackageManager();
+        Intent view = new Intent(Intent.ACTION_VIEW, TvContract.buildChannelUriForPassthroughInput(inputId));
+        Intent viaTvApp = new Intent(view).setPackage(TV_APP);
+
+        if (viaTvApp.resolveActivity(packageManager) != null) {
+            return tryStartActivity(viaTvApp);
+        }
+        if (view.resolveActivity(packageManager) != null) {
+            return tryStartActivity(view);
+        }
+        return openLiveTv();
+    }
+
+    private boolean openLiveTv()
+    {
+        PackageManager packageManager = getPackageManager();
+        Intent intent = packageManager.getLeanbackLaunchIntentForPackage(TV_APP);
+        if (intent == null) {
+            intent = packageManager.getLaunchIntentForPackage(TV_APP);
+        }
+        if (intent == null) {
+            intent = new Intent(Intent.ACTION_VIEW, TvContract.Channels.CONTENT_URI);
+        }
+        return tryStartActivity(intent);
+    }
+
+    private boolean isHomeServiceEnabled()
+    {
+        String services = Settings.Secure.getString(getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        return services != null && services.contains(getPackageName() + "/");
+    }
+
+    private boolean standBy()
+    {
+        HomeButtonService service = HomeButtonService.getInstance();
+        if (service != null && service.standBy()) {
+            return true;
+        }
+        return startAmbientMode();
+    }
+
+    private boolean showPowerDialog()
+    {
+        HomeButtonService service = HomeButtonService.getInstance();
+        return service != null && service.showPowerDialog();
     }
 
     private boolean tryStartActivity(Intent intent)

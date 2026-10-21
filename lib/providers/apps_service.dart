@@ -28,6 +28,9 @@ import 'package:tuple/tuple.dart';
 
 import '../models/app.dart';
 import '../models/category.dart';
+import '../models/tv_input.dart';
+
+export '../models/tv_input.dart';
 
 class AppsService extends ChangeNotifier
 {
@@ -265,6 +268,41 @@ class AppsService extends ChangeNotifier
   Future<bool> isDefaultLauncher() => _fLauncherChannel.isDefaultLauncher();
 
   Future<void> startAmbientMode() => _fLauncherChannel.startAmbientMode();
+
+  App? findApplication(String packageName) => _applications[packageName];
+
+  Future<void> launchActivityFromAction(String action) => _fLauncherChannel.launchActivityFromAction(action);
+
+  Future<List<TvInput>> getTvInputs() async {
+    List<Map<dynamic, dynamic>> inputs = await _fLauncherChannel.getTvInputs();
+    return inputs.map((input) => TvInput(input["id"], input["label"])).toList(growable: false);
+  }
+
+  Future<void> openTvInput(TvInput input) => _fLauncherChannel.openTvInput(input.id);
+
+  Future<void> openLiveTv() => _fLauncherChannel.openLiveTv();
+
+  Future<bool> isHomeServiceEnabled() => _fLauncherChannel.isHomeServiceEnabled();
+
+  Future<bool> standBy() => _fLauncherChannel.standBy();
+
+  Future<bool> showPowerDialog() => _fLauncherChannel.showPowerDialog();
+
+  /// Moves [application] to the start ([toFront]) or the end of a manually sorted [category].
+  Future<void> moveInCategory(App application, Category category, {required bool toFront}) async {
+    if (!_categoriesById.containsKey(category.id)) {
+      return;
+    }
+
+    List<App> applications = _categoriesById[category.id]!.applications;
+    int oldIndex = applications.indexWhere((app) => app.packageName == application.packageName);
+    if (oldIndex < 0) {
+      return;
+    }
+
+    reorderApplication(category, oldIndex, toFront ? 0 : applications.length - 1);
+    await saveApplicationOrderInCategory(category);
+  }
 
   Future<void> addToCategory(App app, Category category, {bool shouldNotifyListeners = true}) async {
     int index = await _database.nextAppCategoryOrder(category.id) ?? 0;

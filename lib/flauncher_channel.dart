@@ -65,6 +65,29 @@ class FLauncherChannel {
 
   Future<void> startAmbientMode() async => await _methodChannel.invokeMethod("startAmbientMode");
 
+  Future<List<Map<dynamic, dynamic>>> getTvInputs() async {
+    List<Map<dynamic, dynamic>>? inputs = await _methodChannel.invokeListMethod("getTvInputs");
+    return inputs ?? [];
+  }
+
+  Future<void> openTvInput(String inputId) async => await _methodChannel.invokeMethod("openTvInput", inputId);
+
+  Future<void> openLiveTv() async => await _methodChannel.invokeMethod("openLiveTv");
+
+  Future<bool> isHomeServiceEnabled() async => await _methodChannel.invokeMethod("isHomeServiceEnabled");
+
+  Future<bool> standBy() async => await _methodChannel.invokeMethod("standBy");
+
+  Future<bool> showPowerDialog() async => await _methodChannel.invokeMethod("showPowerDialog");
+
+  /// Called when the remote's Home button brings the launcher back to the front.
+  void setHomePressedListener(void Function() listener) =>
+      _methodChannel.setMethodCallHandler((call) async {
+        if (call.method == "homePressed") {
+          listener();
+        }
+      });
+
   void addAppsChangedListener(void Function(Map<String, dynamic>) listener) =>
       _appsEventChannel.receiveBroadcastStream().listen((event) {
         Map<dynamic, dynamic> eventMap = event;

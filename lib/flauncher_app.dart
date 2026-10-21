@@ -35,17 +35,18 @@ class FLauncherApp extends StatelessWidget
     BackIntent()
   ]);
 
-  static const MaterialColor _swatch = MaterialColor(0xFF011526, <int, Color>{
-    50: Color(0xFF36A0FA),
-    100: Color(0xFF067BDE),
-    200: Color(0xFF045CA7),
-    300: Color(0xFF033662),
-    400: Color(0xFF022544),
-    500: Color(0xFF011526),
-    600: Color(0xFF000508),
-    700: Color(0xFF000000),
-    800: Color(0xFF000000),
-    900: Color(0xFF000000),
+  // Windows XP "Luna" blues
+  static const MaterialColor _swatch = MaterialColor(0xFF0B3A9E, <int, Color>{
+    50: Color(0xFF9CC0F7),
+    100: Color(0xFF6E9FEF),
+    200: Color(0xFF3D7BE2),
+    300: Color(0xFF1F55C2),
+    400: Color(0xFF16469F),
+    500: Color(0xFF0B3A9E),
+    600: Color(0xFF082C7A),
+    700: Color(0xFF061F57),
+    800: Color(0xFF041640),
+    900: Color(0xFF020B21),
   });
 
   const FLauncherApp();
@@ -57,6 +58,8 @@ class FLauncherApp extends StatelessWidget
     launcherState.refresh(appsService);
 
     return MaterialApp(
+      navigatorKey: launcherState.navigatorKey,
+      debugShowCheckedModeBanner: false,
       shortcuts: {
         ...WidgetsApp.defaultShortcuts,
         const SingleActivator(LogicalKeyboardKey.escape): _backIntents,
@@ -74,11 +77,12 @@ class FLauncherApp extends StatelessWidget
         GlobalWidgetsLocalizations.delegate
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      title: 'FLauncher',
+      title: 'Wack XP',
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
         primarySwatch: _swatch,
+        primaryColor: _swatch[400],
         cardColor: _swatch[300],
         canvasColor: _swatch[300],
         dialogBackgroundColor: _swatch[400],

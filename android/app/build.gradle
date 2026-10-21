@@ -46,7 +46,7 @@ secretProperties.setProperty("signing_key_alias", "${System.getenv('FLAUNCHER_SI
 
 android {
     defaultConfig {
-        applicationId "me.efesser.flauncher"
+        applicationId "com.wack.tvlauncher"
         compileSdk 35
         minSdk 21
         targetSdk 35
@@ -73,14 +73,6 @@ android {
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
-        }
-    }
-
-    splits {
-        abi {
-            // https://stackoverflow.com/a/39950584/21037183
-            enable gradle.startParameter.taskNames.any { it.contains("assembleRelease") }
-            universalApk true
         }
     }
 

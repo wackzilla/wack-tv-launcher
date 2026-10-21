@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Wack XP</string>
+    <string name="home_service_label">Wack XP Home button</string>
+    <string name="home_service_description">Makes the remote\'s Home button open Wack XP instead of the stock home screen, and lets the Start menu put the TV on stand by.</string>
+</resources>

@@ -16,122 +16,272 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-
-import 'package:flauncher/custom_traversal_policy.dart';
+import 'package:flauncher/models/app.dart';
 import 'package:flauncher/providers/apps_service.dart';
 import 'package:flauncher/providers/launcher_state.dart';
+import 'package:flauncher/providers/settings_service.dart';
 import 'package:flauncher/providers/wallpaper_service.dart';
-import 'package:flauncher/widgets/apps_grid.dart';
-import 'package:flauncher/widgets/category_row.dart';
 import 'package:flauncher/widgets/launcher_alternative_view.dart';
-import 'package:flauncher/widgets/focus_aware_app_bar.dart';
+import 'package:flauncher/xp/app_context_menu.dart';
+import 'package:flauncher/xp/app_icon.dart';
+import 'package:flauncher/xp/hills_wallpaper.dart';
+import 'package:flauncher/xp/start_menu.dart';
+import 'package:flauncher/xp/taskbar.dart';
+import 'package:flauncher/xp/xp_style.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'models/category.dart';
 
-class FLauncher extends StatelessWidget {
+/// The Windows XP style home screen: wallpaper, desktop icons, taskbar and Start menu.
+class FLauncher extends StatefulWidget {
   const FLauncher();
 
   @override
-  Widget build(BuildContext context) => FocusTraversalGroup(
-    policy: RowByRowTraversalPolicy(),
-    child: Stack(
+  State<FLauncher> createState() => _FLauncherState();
+}
+
+class _FLauncherState extends State<FLauncher> {
+  final FocusNode _firstIconFocusNode = FocusNode(debugLabel: "first desktop icon");
+  final FocusNode _startButtonFocusNode = FocusNode(debugLabel: "start button");
+
+  late final LauncherState _launcherState;
+  late int _homePressedCount;
+  late bool _startMenuOpen;
+
+  @override
+  void initState() {
+    super.initState();
+    _launcherState = context.read<LauncherState>();
+    _homePressedCount = _launcherState.homePressedCount;
+    _startMenuOpen = _launcherState.startMenuOpen;
+    _launcherState.addListener(_onLauncherStateChanged);
+  }
+
+  @override
+  void dispose() {
+    _launcherState.removeListener(_onLauncherStateChanged);
+    _firstIconFocusNode.dispose();
+    _startButtonFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _onLauncherStateChanged() {
+    if (_launcherState.homePressedCount != _homePressedCount) {
+      _homePressedCount = _launcherState.homePressedCount;
+      _startMenuOpen = _launcherState.startMenuOpen;
+      _focusAfterFrame(() => _firstIconFocusNode.context != null ? _firstIconFocusNode : _startButtonFocusNode);
+    }
+    else if (_startMenuOpen && !_launcherState.startMenuOpen) {
+      // Like XP, closing the Start menu leaves the Start button selected.
+      _startMenuOpen = false;
+      _focusAfterFrame(() => _startButtonFocusNode);
+    }
+    else {
+      _startMenuOpen = _launcherState.startMenuOpen;
+    }
+  }
+
+  void _focusAfterFrame(FocusNode Function() node) =>
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && node().context != null) {
+          node().requestFocus();
+        }
+      });
+
+  @override
+  Widget build(BuildContext context) => Focus(
+    canRequestFocus: false,
+    skipTraversal: true,
+    onKeyEvent: (_, event) {
+      // Menu on anything that doesn't have its own menu opens the Start menu.
+      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.contextMenu) {
+        _launcherState.toggleStartMenu();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    },
+    child: Material(
+      color: Colors.black,
+      child: Stack(
       children: [
-        Consumer<WallpaperService>(
-          builder: (_, wallpaperService, __) => _wallpaper(context, wallpaperService)
-        ),
+        Positioned.fill(child: _wallpaper(context)),
         Consumer<LauncherState>(
-          builder: (_, state, child) => Visibility(
-            child: child!,
-            replacement: const Center(
-              child: AlternativeLauncherView()
-            ),
-            visible: state.launcherVisible
-          ),
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            appBar: FocusAwareAppBar(),
-            body: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Consumer<AppsService>(
-                builder: (context, appsService, _) {
-                  if (appsService.initialized) {
-                    return SingleChildScrollView(child: _sections(appsService.launcherSections));
-                  }
-                  else {
-                    return _emptyState(context);
-                  }
-                }
-              )
-            )
-          )
-        )
-      ]
-    )
+          builder: (context, state, _) {
+            if (!state.launcherVisible) {
+              return const Center(child: AlternativeLauncherView());
+            }
+
+            return Stack(
+              children: [
+                Column(
+                  children: [
+                    Expanded(
+                      child: ExcludeFocus(
+                        excluding: state.startMenuOpen,
+                        child: _desktop(),
+                      ),
+                    ),
+                    ExcludeFocus(
+                      excluding: state.startMenuOpen,
+                      child: Selector<AppsService, bool>(
+                        selector: (_, appsService) => appsService.initialized && _desktopApps(appsService).isEmpty,
+                        builder: (_, desktopEmpty, __) => Taskbar(
+                          startButtonFocusNode: _startButtonFocusNode,
+                          startButtonAutofocus: desktopEmpty,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (state.startMenuOpen)
+                  Positioned(
+                    left: 0,
+                    bottom: taskbarHeight,
+                    child: LayoutBuilder(
+                      builder: (context, _) {
+                        final double height = MediaQuery.sizeOf(context).height - taskbarHeight - 24;
+                        return StartMenu(height: height.clamp(300, 480));
+                      },
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
+      ),
+    ),
   );
 
-  Widget _sections(List<LauncherSection> sections) => Column(
-    children: sections.map((section) {
-      final Key sectionKey = Key(section.id.toString());
-      final Widget categoryWidget;
+  Widget _wallpaper(BuildContext context) {
+    final wallpaperService = context.watch<WallpaperService>();
+    final gradientChosen = context.select<SettingsService, bool>((settings) => settings.gradientUuid != null);
 
-      if (section is LauncherSpacer) {
-        return SizedBox(key: sectionKey, height: section.height.toDouble());
-      }
-
-      Category category = section as Category;
-      switch (category.type) {
-        case CategoryType.row:
-          categoryWidget = CategoryRow(
-              key: sectionKey,
-              category: category,
-              applications: category.applications
-          );
-        case CategoryType.grid:
-          categoryWidget = AppsGrid(
-              key: sectionKey,
-              category: category,
-              applications: category.applications
-          );
-      }
-
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: categoryWidget
-      );
-    }).toList(),
-  );
-
-  Widget _wallpaper(BuildContext context, WallpaperService wallpaperService) {
     if (wallpaperService.wallpaper != null) {
-      final physicalSize = MediaQuery.sizeOf(context);
       return Image(
         image: wallpaperService.wallpaper!,
         key: const Key("background"),
         fit: BoxFit.cover,
-        height: physicalSize.height,
-        width: physicalSize.width
       );
     }
-    else {
+    if (gradientChosen) {
       return Container(key: const Key("background"), decoration: BoxDecoration(gradient: wallpaperService.gradient.gradient));
     }
+    return const HillsWallpaper(key: Key("background"));
   }
 
-  Widget _emptyState(BuildContext context) {
-    AppLocalizations localizations = AppLocalizations.of(context)!;
+  Widget _desktop() => Consumer<AppsService>(
+    builder: (context, appsService, _) {
+      if (!appsService.initialized) {
+        return const Center(child: CircularProgressIndicator(color: Colors.white));
+      }
 
-    return Center(
+      final entries = _desktopApps(appsService);
+      return LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          child: SizedBox(
+            height: constraints.maxHeight - 12,
+            child: Wrap(
+              direction: Axis.vertical,
+              spacing: 6,
+              runSpacing: 10,
+              children: [
+                for (int i = 0; i < entries.length; i++)
+                  _DesktopIcon(
+                    key: ValueKey(entries[i].app.packageName),
+                    app: entries[i].app,
+                    category: entries[i].category,
+                    focusNode: i == 0 ? _firstIconFocusNode : null,
+                    autofocus: i == 0,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+
+  /// Every app on the launcher's groups, in group order, each shown once.
+  static List<({App app, Category category})> _desktopApps(AppsService appsService) {
+    final seen = <String>{};
+    final entries = <({App app, Category category})>[];
+
+    for (final section in appsService.launcherSections) {
+      if (section is! Category) {
+        continue;
+      }
+      for (final app in section.applications) {
+        if (!app.hidden && seen.add(app.packageName)) {
+          entries.add((app: app, category: section));
+        }
+      }
+    }
+    return entries;
+  }
+}
+
+class _DesktopIcon extends StatelessWidget {
+  final App app;
+  final Category category;
+  final FocusNode? focusNode;
+  final bool autofocus;
+
+  const _DesktopIcon({
+    super.key,
+    required this.app,
+    required this.category,
+    this.focusNode,
+    this.autofocus = false,
+  });
+
+  @override
+  Widget build(BuildContext context) => XpPressable(
+    focusNode: focusNode,
+    autofocus: autofocus,
+    ensureVisibleAlignment: 0.3,
+    onPressed: () => launchXpApp(context, app),
+    onMenu: () => showAppContextMenu(context, app, category: category),
+    builder: (context, focused) => SizedBox(
+      width: 100,
+      height: 92,
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator(),
-          const SizedBox(height: 16),
-          Text(localizations.loading, style: Theme.of(context).textTheme.titleLarge),
+          Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              color: focused ? const Color(0x80316AC5) : null,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: AppIcon(app.packageName, size: 46),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+            decoration: focused
+                ? BoxDecoration(
+                    color: XpColors.selection,
+                    border: Border.all(color: const Color(0xFFFFF3B0), width: 1),
+                  )
+                : null,
+            child: Text(app.name,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                height: 1.15,
+                shadows: focused ? null : xpTextShadow,
+              ),
+            ),
+          ),
         ],
       ),
-    );
-  }
+    ),
+  );
 }

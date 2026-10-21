@@ -25,6 +25,7 @@ import 'package:flauncher/widgets/settings/date_time_format_dialog.dart';
 import 'package:flauncher/widgets/settings/flauncher_about_dialog.dart';
 import 'package:flauncher/widgets/settings/status_bar_panel_page.dart';
 import 'package:flauncher/widgets/settings/wallpaper_panel_page.dart';
+import 'package:flauncher/xp/xp_dialogs.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
@@ -104,6 +105,39 @@ class SettingsPanelPage extends StatelessWidget {
                       ],
                     ),
                     onPressed: () => context.read<AppsService>().openSettings(),
+                  ),
+                  const Divider(),
+                  RoundedSwitchListTile(
+                    value: settingsService.overrideHome,
+                    onChanged: (value) => settingsService.setOverrideHome(value),
+                    title: Text("Home button opens Wack XP", style: Theme.of(context).textTheme.bodyMedium),
+                    secondary: const Icon(Icons.home_outlined),
+                  ),
+                  RoundedSwitchListTile(
+                    value: settingsService.guardStockLauncher,
+                    onChanged: (value) => settingsService.setGuardStockLauncher(value),
+                    title: Text("Reopen Wack XP if the stock home screen appears", style: Theme.of(context).textTheme.bodyMedium),
+                    secondary: const Icon(Icons.shield_outlined),
+                  ),
+                  FutureBuilder<bool>(
+                    future: context.read<AppsService>().isHomeServiceEnabled(),
+                    builder: (context, snapshot) => TextButton(
+                      child: Row(
+                        children: [
+                          Icon(snapshot.data == true ? Icons.check_circle_outline : Icons.warning_amber),
+                          Container(width: 8),
+                          Flexible(
+                            child: Text(
+                              snapshot.data == true
+                                  ? "Home button service is on"
+                                  : "Home button service is off. Set it up",
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ),
+                        ],
+                      ),
+                      onPressed: () => showHomeServiceHelp(context),
+                    ),
                   ),
                   const Divider(),
                   TextButton(

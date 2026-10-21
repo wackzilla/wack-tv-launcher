@@ -32,6 +32,16 @@ const _showCategoryTitles = "show_category_titles";
 const _showDateInStatusBar = "show_date_in_status_bar";
 const _showTimeInStatusBar = "show_time_in_status_bar";
 const _timeFormat = "time_format";
+// Read by HomeButtonService on the Android side as "flutter.override_home" and
+// "flutter.guard_stock_launcher", so don't rename them.
+const _overrideHome = "override_home";
+const _guardStockLauncher = "guard_stock_launcher";
+const _startMenuPinned = "start_menu_pinned";
+const _taskbarPinned = "taskbar_pinned";
+const _recentApps = "recent_apps";
+const _userName = "user_name";
+
+const _maxRecentApps = 6;
 
 class SettingsService extends ChangeNotifier {
   static final defaultDateFormat = "EEEE d";
@@ -59,9 +69,62 @@ class SettingsService extends ChangeNotifier {
 
   String get timeFormat => _sharedPreferences.getString(_timeFormat) ?? defaultTimeFormat;
 
+  bool get overrideHome => _sharedPreferences.getBool(_overrideHome) ?? true;
+
+  bool get guardStockLauncher => _sharedPreferences.getBool(_guardStockLauncher) ?? true;
+
+  List<String> get startMenuPinned => _sharedPreferences.getStringList(_startMenuPinned) ?? const [];
+
+  List<String> get taskbarPinned => _sharedPreferences.getStringList(_taskbarPinned) ?? const [];
+
+  List<String> get recentApps => _sharedPreferences.getStringList(_recentApps) ?? const [];
+
+  String get userName => _sharedPreferences.getString(_userName) ?? "Wack";
+
   SettingsService(
     this._sharedPreferences
   );
+
+  Future<void> setOverrideHome(bool value) async {
+    return set(_overrideHome, value);
+  }
+
+  Future<void> setGuardStockLauncher(bool value) async {
+    return set(_guardStockLauncher, value);
+  }
+
+  Future<void> setUserName(String value) async {
+    await _sharedPreferences.setString(_userName, value);
+    notifyListeners();
+  }
+
+  Future<void> toggleStartMenuPin(String packageName) =>
+      _toggleInList(_startMenuPinned, startMenuPinned, packageName);
+
+  Future<void> toggleTaskbarPin(String packageName) =>
+      _toggleInList(_taskbarPinned, taskbarPinned, packageName);
+
+  Future<void> addRecentApp(String packageName) async {
+    List<String> recent = List.of(recentApps)
+      ..remove(packageName)
+      ..insert(0, packageName);
+    if (recent.length > _maxRecentApps) {
+      recent = recent.sublist(0, _maxRecentApps);
+    }
+
+    await _sharedPreferences.setStringList(_recentApps, recent);
+    notifyListeners();
+  }
+
+  Future<void> _toggleInList(String key, List<String> current, String packageName) async {
+    List<String> list = List.of(current);
+    if (!list.remove(packageName)) {
+      list.add(packageName);
+    }
+
+    await _sharedPreferences.setStringList(key, list);
+    notifyListeners();
+  }
 
   Future<void> set(String key, bool value) async {
     await _sharedPreferences.setBool(key, value);
@@ -82,6 +145,11 @@ class SettingsService extends ChangeNotifier {
 
   Future<void> setGradientUuid(String value) async {
     await _sharedPreferences.setString(_gradientUuidKey, value);
+    notifyListeners();
+  }
+
+  Future<void> clearGradientUuid() async {
+    await _sharedPreferences.remove(_gradientUuidKey);
     notifyListeners();
   }
 

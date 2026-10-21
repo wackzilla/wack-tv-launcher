@@ -1,68 +1,49 @@
-# FLauncher (fork)
-#### This is a fork of the GitLab repository at: https://gitlab.com/flauncher/flauncher.
+# Wack XP
 
-FLauncher is an open-source alternative launcher for Android TV, built with [Flutter](https://flutter.dev).
+A Windows XP style home screen for Android TV, built on [FLauncher](https://gitlab.com/flauncher/flauncher) (via [osrosal/flauncher](https://github.com/osrosal/flauncher)). Made for a Philips Android TV, but it should work on any Android TV.
 
-## Download
-Get the latest build from the [releases](https://github.com/osrosal/flauncher/releases) page, you can look for older builds on the [actions](https://github.com/CocoCR300/flauncher/actions) tab, where they are uploaded as artifacts.
+Not affiliated with Microsoft. The wallpaper and logo are original drawings in the XP style.
 
-## Features
-For a list of the changes introduced by this fork from the original, see the [CHANGELOG](CHANGELOG.md) file.
+## What's on it
 
-- [x] No ads
-- [x] Customizable categories
-- [x] Manually reorder apps within categories
-- [x] Wallpaper support
-- [x] Open "Android Settings"
-- [x] Open "App info"
-- [x] Uninstall app
-- [x] Clock
-- [x] Switch between row and grid for categories
-- [x] Support for non-TV (sideloaded) apps
-- [x] Navigation sound feedback
-- [ ] Force stop app
+- **Desktop:** your apps as XP desktop icons over a green-hills wallpaper (or your own picture or gradient)
+- **Taskbar:** green **start** button, pinned apps (Quick Launch), network status and clock
+- **Start menu:**
+  - Left: apps pinned to the Start menu, recently used apps, and **All Programs** (every app, including hidden ones)
+  - Right: **My TV** (Live TV), **TV Inputs** (HDMI, AV...), **Control Panel** (Android settings), **Network Connections** (Wi-Fi), **Launcher Settings**, **Help and Support**, **About**
+  - Bottom: **Log Off** (screensaver) and **Turn Off Computer** (Stand By, Turn Off, Restart)
+- **App options:** hold OK, or press Menu, on any app to open it, pin it to the Start menu or taskbar, move it, add it to a group, hide it, open its properties, or uninstall it
+- **Home button override:** an accessibility service makes the remote's Home button always come back to Wack XP, and reopens it if the stock home screen shows up. Both can be turned off in Launcher Settings.
 
-## Screenshots
-|  |  |  |
-|--|--|--|
-| ![](screenshots/Screenshot_1624378896.png) | ![](screenshots/Screenshot_1624378921.png) | ![](screenshots/Screenshot_1624378938.png) |
+## Remote
 
-## Set FLauncher as default launcher
+| Button | Does |
+|---|---|
+| OK | Open |
+| Hold OK / Menu | App options. Menu anywhere else opens the Start menu |
+| Home | Back to the desktop, closing anything open |
+| Back | Close the Start menu or current window |
 
-### Method 1: remap the Home button
-This is the "safer" and easiest way. Use [Button Mapper](https://play.google.com/store/apps/details?id=flar2.homebutton) to remap the Home button of the remote to launch FLauncher.
+## Build
 
-### Method 2: disable the default launcher
-**:warning: Disclaimer :warning:**
+Every push to `master` builds a signed APK with GitHub Actions (**Actions** tab > latest run > `wack-xp` artifact). The signing key is kept in the repo's Actions secrets, not in the code.
 
-**You are doing this at your own risk, and you'll be responsible in any case of malfunction on your device.**
+## Install
 
-The following commands have been tested on Chromecast with Google TV only. This may be different on other devices.
-
-Once the default launcher is disabled, press the Home button on the remote, and you'll be prompted by the system to choose which app to set as default.
-
-#### Disable default launcher
-```shell
-# Disable com.google.android.apps.tv.launcherx which is the default launcher on CCwGTV
-$ adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
-# com.google.android.tungsten.setupwraith will then be used as a 'fallback' and will automatically
-# re-enable the default launcher, so disable it as well
-$ adb shell pm disable-user --user 0 com.google.android.tungsten.setupwraith
+```powershell
+.\install.ps1
 ```
 
-#### Re-enable default launcher
-```shell
-$ adb shell pm enable com.google.android.apps.tv.launcherx
-$ adb shell pm enable com.google.android.tungsten.setupwraith
+This downloads the latest build, installs it on the TV over ADB, disables the stock launcher, and turns on the Home button service. Pass a path to install a specific APK: `.\install.ps1 C:\path\to\wack-xp.apk`.
+
+## Undo
+
+```powershell
+adb -s 192.168.0.112:5555 shell settings put secure enabled_accessibility_services '""'
+adb -s 192.168.0.112:5555 shell pm enable com.google.android.tvlauncher
+adb -s 192.168.0.112:5555 uninstall com.wack.tvlauncher
 ```
 
-#### Known issues
-On Chromecast with Google TV (maybe others), the "YouTube" remote button will stop working if the default launcher is disabled. As a workaround, you can use [Button Mapper](https://play.google.com/store/apps/details?id=flar2.homebutton) to remap it correctly.
+## License
 
-## Wallpaper
-Because Android's `WallpaperManager` is not available on some Android TV devices, FLauncher implements its own wallpaper management method.
-
-Please note that changing wallpaper requires a file explorer to be installed on the device in order to pick a file.
-
-## Support the original author: [etienn01](https://github.com/etienn01)
-<a href="https://www.buymeacoffee.com/etienn01" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="200"></a>
+GPL-3.0, like FLauncher. See [LICENSE](LICENSE).

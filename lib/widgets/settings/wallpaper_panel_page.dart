@@ -37,6 +37,16 @@ class WallpaperPanelPage extends StatelessWidget {
             autofocus: true,
             child: Row(
               children: [
+                Icon(Icons.landscape_outlined),
+                Container(width: 8),
+                Text("Hills (default)", style: Theme.of(context).textTheme.bodyMedium),
+              ],
+            ),
+            onPressed: () => context.read<WallpaperService>().useDefaultWallpaper(),
+          ),
+          TextButton(
+            child: Row(
+              children: [
                 Icon(Icons.gradient),
                 Container(width: 8),
                 Text(localizations.gradient, style: Theme.of(context).textTheme.bodyMedium),

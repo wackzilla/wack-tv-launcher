@@ -72,6 +72,17 @@ class WallpaperService extends ChangeNotifier {
     }
   }
 
+  /// Goes back to the painted XP hills wallpaper.
+  Future<void> useDefaultWallpaper() async {
+    if (await _wallpaperFile.exists()) {
+      await _wallpaperFile.delete();
+    }
+    _wallpaper = null;
+
+    await _settingsService.clearGradientUuid();
+    notifyListeners();
+  }
+
   Future<void> setGradient(FLauncherGradient fLauncherGradient) async {
     if (await _wallpaperFile.exists()) {
       await _wallpaperFile.delete();

@@ -39,6 +39,8 @@ Future<void> main() async {
   final sharedPreferences = await SharedPreferences.getInstance();
   final fLauncherChannel = FLauncherChannel();
   final fLauncherDatabase = FLauncherDatabase(connect());
+  final launcherState = LauncherState();
+  fLauncherChannel.setHomePressedListener(launcherState.goHome);
 
   runApp(MultiProvider(
       providers: [
@@ -46,7 +48,7 @@ Future<void> main() async {
             create: (_) => SettingsService(sharedPreferences),
             lazy: false),
         ChangeNotifierProvider(create: (_) => AppsService(fLauncherChannel, fLauncherDatabase)),
-        ChangeNotifierProvider(create: (_) => LauncherState()),
+        ChangeNotifierProvider.value(value: launcherState),
         ChangeNotifierProvider(create: (_) => NetworkService(fLauncherChannel)),
         ChangeNotifierProvider(
             create: (context) {
