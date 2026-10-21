@@ -277,7 +277,7 @@ class _FLauncherState extends State<FLauncher> {
 }
 
 class _DesktopIcon extends StatelessWidget {
-  static const _moveKeys = {
+  static final _moveKeys = {
     LogicalKeyboardKey.arrowUp: -1,
     LogicalKeyboardKey.arrowDown: 1,
     LogicalKeyboardKey.arrowLeft: -2,
