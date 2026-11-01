@@ -180,7 +180,7 @@ class _ScenicHomeState extends State<ScenicHome>
                   AnimatedPositioned(
                     duration: _infoBoxMove,
                     curve: Curves.easeOut,
-                    left: 32,
+                    left: 12,
                     top: (_infoBoxesRaised ? _clockTopRaised : _clockTop) + _nextPhotoOffset,
                     child: ExcludeFocus(excluding: state.startMenuOpen, child: _nextPhotoButton()),
                   ),
@@ -230,12 +230,9 @@ class _ScenicHomeState extends State<ScenicHome>
       }
       return KeyEventResult.ignored;
     },
-    child: _RoundButton(
+    child: _NextPhotoButton(
       focusNode: _nextPhotoFocusNode,
-      size: 44,
-      iconSize: 30,
       onPressed: () => _nextPhoto.value++,
-      child: const Icon(Icons.chevron_right),
     ),
   );
 
@@ -513,10 +510,8 @@ class _RoundButton extends StatelessWidget
   final Widget child;
   final VoidCallback onPressed;
   final FocusNode? focusNode;
-  final double size;
-  final double iconSize;
 
-  const _RoundButton({required this.child, required this.onPressed, this.focusNode, this.size = 34, this.iconSize = 18});
+  const _RoundButton({required this.child, required this.onPressed, this.focusNode});
 
   @override
   Widget build(BuildContext context) => XpPressable(
@@ -524,15 +519,44 @@ class _RoundButton extends StatelessWidget
     onPressed: onPressed,
     builder: (context, focused) => AnimatedContainer(
       duration: const Duration(milliseconds: 120),
-      width: size,
-      height: size,
+      width: 34,
+      height: 34,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: focused ? Colors.white : ScenicColors.glassStrong,
       ),
       child: IconTheme(
-        data: IconThemeData(color: focused ? Colors.black87 : Colors.white, size: iconSize),
+        data: IconThemeData(color: focused ? Colors.black87 : Colors.white, size: 18),
         child: child,
+      ),
+    ),
+  );
+}
+
+/// Stays out of the way of the photo: barely visible until it's selected.
+class _NextPhotoButton extends StatelessWidget
+{
+  final FocusNode focusNode;
+  final VoidCallback onPressed;
+
+  const _NextPhotoButton({required this.focusNode, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) => XpPressable(
+    focusNode: focusNode,
+    onPressed: onPressed,
+    builder: (context, focused) => AnimatedOpacity(
+      duration: const Duration(milliseconds: 150),
+      opacity: focused ? 1 : 0.12,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xB3000000),
+          border: Border.all(color: focused ? Colors.white : Colors.transparent, width: 2),
+        ),
+        child: const Icon(Icons.chevron_right, color: Colors.white, size: 30),
       ),
     ),
   );
