@@ -287,27 +287,29 @@ class _ForecastState extends State<_Forecast>
       return const SizedBox.shrink();
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(weather.icon, color: Colors.white, size: 42, shadows: _shadow),
-            const SizedBox(width: 10),
-            Text("${weather.temperature}°",
-              style: const TextStyle(color: Colors.white, fontSize: 52, height: 1.1, fontWeight: FontWeight.w300, shadows: _shadow),
-            ),
-          ],
-        ),
-        Text(weather.condition,
-          style: const TextStyle(color: Colors.white, fontSize: 17, shadows: _shadow),
-        ),
-        const SizedBox(height: 2),
-        Text("H ${weather.high}°  L ${weather.low}°  ·  ${widget.location.name}",
-          style: const TextStyle(color: Colors.white, fontSize: 14, shadows: _shadow),
-        ),
-      ],
+    return ScenicDarkBox(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(weather.icon, color: Colors.white, size: 42, shadows: _shadow),
+              const SizedBox(width: 10),
+              Text("${weather.temperature}°",
+                style: const TextStyle(color: Colors.white, fontSize: 52, height: 1.1, fontWeight: FontWeight.w300, shadows: _shadow),
+              ),
+            ],
+          ),
+          Text(weather.condition,
+            style: const TextStyle(color: Colors.white, fontSize: 17, shadows: _shadow),
+          ),
+          const SizedBox(height: 2),
+          Text("H ${weather.high}°  L ${weather.low}°  ·  ${widget.location.name}",
+            style: const TextStyle(color: Colors.white, fontSize: 14, shadows: _shadow),
+          ),
+        ],
+      ),
     );
   }
 }

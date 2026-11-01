@@ -158,8 +158,8 @@ class _ScenicHomeState extends State<ScenicHome>
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  const Positioned(left: 48, top: 104, child: _Clock()),
-                  const Positioned(right: 56, top: 120, child: WeatherPanel()),
+                  const Positioned(left: 36, top: 92, child: _Clock()),
+                  const Positioned(right: 36, top: 104, child: WeatherPanel()),
                   Positioned(
                     top: 20,
                     right: 28,
@@ -421,20 +421,22 @@ class _Clock extends StatelessWidget
       showTime: settings.showTimeInStatusBar,
       showDate: settings.showDateInStatusBar,
     ),
-    builder: (_, clock, __) => Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (clock.showDate)
-          const DateTimeWidget("EEEE, MMMM d",
-            updateInterval: Duration(minutes: 1),
-            textStyle: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w400, shadows: _clockShadow),
-          ),
-        if (clock.showTime)
-          DateTimeWidget(clock.timeFormat,
-            key: ValueKey("scenic time ${clock.timeFormat}"),
-            textStyle: const TextStyle(color: Colors.white, fontSize: 84, height: 1.1, fontWeight: FontWeight.w300, shadows: _clockShadow),
-          ),
-      ],
+    builder: (_, clock, __) => !clock.showDate && !clock.showTime ? const SizedBox.shrink() : ScenicDarkBox(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (clock.showDate)
+            const DateTimeWidget("EEEE, MMMM d",
+              updateInterval: Duration(minutes: 1),
+              textStyle: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w400, shadows: _clockShadow),
+            ),
+          if (clock.showTime)
+            DateTimeWidget(clock.timeFormat,
+              key: ValueKey("scenic time ${clock.timeFormat}"),
+              textStyle: const TextStyle(color: Colors.white, fontSize: 84, height: 1.1, fontWeight: FontWeight.w300, shadows: _clockShadow),
+            ),
+        ],
+      ),
     ),
   );
 }

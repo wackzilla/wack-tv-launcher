@@ -15,6 +15,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import 'dart:ui' as ui;
+
 import 'package:flauncher/providers/settings_service.dart';
 import 'package:flauncher/widgets/focus_keyboard_listener.dart';
 import 'package:flutter/material.dart';
@@ -65,6 +67,32 @@ class ScenicColors
   static const glassBorder = Color(0x4DFFFFFF);
   static const window = Color(0xF21B2029);
   static const accent = Color(0xFFFFC44D);
+  static const darkGlass = Color(0x66000000);
+}
+
+/// A darkened, see-through box that keeps text readable over any photo.
+class ScenicDarkBox extends StatelessWidget
+{
+  final Widget child;
+
+  const ScenicDarkBox({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(20),
+    child: BackdropFilter(
+      filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        decoration: BoxDecoration(
+          color: ScenicColors.darkGlass,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: ScenicColors.glassBorder),
+        ),
+        child: child,
+      ),
+    ),
+  );
 }
 
 /// Whether the Scenic theme is on. Call it from a build method, so the widget follows the setting.
