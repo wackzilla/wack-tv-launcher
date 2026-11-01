@@ -49,7 +49,7 @@ const _clockTop = 160.0;
 const _clockTopRaised = 62.0;
 const _weatherOffset = 8.0;
 const _infoBoxMove = Duration(milliseconds: 220);
-// Lines the next photo button up with the middle of the clock.
+// Lines the next photo button up with the middle of the weather box.
 const _nextPhotoOffset = 44.0;
 
 const _clockShadow = [Shadow(color: Color(0x99000000), offset: Offset(0, 2), blurRadius: 12)];
@@ -75,6 +75,7 @@ class _ScenicHomeState extends State<ScenicHome>
   final ValueNotifier<String> _focusedAppName = ValueNotifier("");
 
   String? _firstDockPackage;
+  String? _lastDockPackage;
   String? _firstRowPackage;
   String? _movingPackage;
   bool _rowsOpen = false;
@@ -180,7 +181,7 @@ class _ScenicHomeState extends State<ScenicHome>
                   AnimatedPositioned(
                     duration: _infoBoxMove,
                     curve: Curves.easeOut,
-                    left: 12,
+                    right: 12,
                     top: (_infoBoxesRaised ? _clockTopRaised : _clockTop) + _nextPhotoOffset,
                     child: ExcludeFocus(excluding: state.startMenuOpen, child: _nextPhotoButton()),
                   ),
@@ -224,8 +225,8 @@ class _ScenicHomeState extends State<ScenicHome>
     canRequestFocus: false,
     skipTraversal: true,
     onKeyEvent: (_, event) {
-      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowRight) {
-        (_focusNodes[_firstDockPackage] ?? _focusNodes[_firstRowPackage])?.requestFocus();
+      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+        (_focusNodes[_lastDockPackage] ?? _focusNodes[_firstRowPackage])?.requestFocus();
         return KeyEventResult.handled;
       }
       return KeyEventResult.ignored;
@@ -269,6 +270,7 @@ class _ScenicHomeState extends State<ScenicHome>
       final rows = appsService.desktopApps.where((entry) => !pinnedPackages.contains(entry.app.packageName)).toList();
 
       _firstDockPackage = pinned.isEmpty ? null : pinned.first.packageName;
+      _lastDockPackage = pinned.isEmpty ? null : pinned.last.packageName;
       _firstRowPackage = rows.isEmpty ? null : rows.first.app.packageName;
 
       // With nothing pinned the dock can't hold the selection, so the rows stay open.
@@ -314,7 +316,7 @@ class _ScenicHomeState extends State<ScenicHome>
         _networkFocusNode.requestFocus();
         return KeyEventResult.handled;
       }
-      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowLeft && _focusNodes[_firstDockPackage]?.hasPrimaryFocus == true) {
+      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowRight && _focusNodes[_lastDockPackage]?.hasPrimaryFocus == true) {
         _nextPhotoFocusNode.requestFocus();
         return KeyEventResult.handled;
       }

@@ -19,7 +19,7 @@ Not affiliated with Microsoft. The wallpaper and logo are original drawings in t
 
 Turn on **Scenic theme** in Launcher Settings for a modern look with the same features:
 
-- **Background:** photos from [r/EarthPorn](https://www.reddit.com/r/EarthPorn/) that crossfade every 2 minutes, on every press of Home, and when you press the **>** button on the left. The TV downloads 250 landscape photos once, resized to 1080p and kept in the app's private storage (under 250 MB), then never fetches any more. It goes slowly to respect Reddit's rate limit, carries on after a restart, and shows Bing's daily photos if Reddit can't be reached at first.
+- **Background:** photos from [r/EarthPorn](https://www.reddit.com/r/EarthPorn/) that crossfade every 2 minutes, on every press of Home, and when you press the **>** button on the right. The TV downloads 250 landscape photos once, resized to 1080p and kept in the app's private storage (under 250 MB), then never fetches any more. It goes slowly to respect Reddit's rate limit, carries on after a restart, and shows Bing's daily photos if Reddit can't be reached at first.
 - **Dock:** only your pinned apps. Hold OK on an app and choose **Pin to Dock**.
 - **Other apps:** press Down from the dock to reveal the rest of your apps. They stay hidden until then.
 - **Top right:** network, power and settings. The settings button (or Menu) holds what the Start menu has: Android settings, launcher settings, TV inputs, hidden apps, screensaver, help and about.
