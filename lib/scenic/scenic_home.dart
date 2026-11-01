@@ -43,6 +43,13 @@ const _rowItemSpacing = 4.0;
 const _itemsPerRow = 8;
 const _rowsMaxHeight = 188.0;
 
+const _infoBoxInset = 110.0;
+const _clockTop = 140.0;
+// Clear of the dock once the app rows have pushed it up.
+const _clockTopRaised = 62.0;
+const _weatherOffset = 10.0;
+const _infoBoxMove = Duration(milliseconds: 220);
+
 const _clockShadow = [Shadow(color: Color(0x99000000), offset: Offset(0, 2), blurRadius: 12)];
 
 /// The Scenic home screen: rotating photos, clock, weather and a dock of pinned apps.
@@ -119,6 +126,9 @@ class _ScenicHomeState extends State<ScenicHome>
   FocusNode _nodeFor(String packageName) =>
       _focusNodes.putIfAbsent(packageName, () => FocusNode(debugLabel: packageName));
 
+  // With nothing pinned the rows are always open, so the boxes stay up out of their way.
+  bool get _infoBoxesRaised => _rowsOpen || (_firstDockPackage == null && _firstRowPackage != null);
+
   void _openRows() {
     setState(() => _rowsOpen = true);
     _focusAfterFrame(() => _focusNodes[_firstRowPackage] ?? _settingsFocusNode);
@@ -158,8 +168,20 @@ class _ScenicHomeState extends State<ScenicHome>
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  const Positioned(left: 36, top: 92, child: _Clock()),
-                  const Positioned(right: 36, top: 104, child: WeatherPanel()),
+                  AnimatedPositioned(
+                    duration: _infoBoxMove,
+                    curve: Curves.easeOut,
+                    left: _infoBoxInset,
+                    top: _infoBoxesRaised ? _clockTopRaised : _clockTop,
+                    child: const _Clock(),
+                  ),
+                  AnimatedPositioned(
+                    duration: _infoBoxMove,
+                    curve: Curves.easeOut,
+                    right: _infoBoxInset,
+                    top: (_infoBoxesRaised ? _clockTopRaised : _clockTop) + _weatherOffset,
+                    child: const WeatherPanel(),
+                  ),
                   Positioned(
                     top: 20,
                     right: 28,
@@ -428,12 +450,12 @@ class _Clock extends StatelessWidget
           if (clock.showDate)
             const DateTimeWidget("EEEE, MMMM d",
               updateInterval: Duration(minutes: 1),
-              textStyle: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w400, shadows: _clockShadow),
+              textStyle: TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w400, shadows: _clockShadow),
             ),
           if (clock.showTime)
             DateTimeWidget(clock.timeFormat,
               key: ValueKey("scenic time ${clock.timeFormat}"),
-              textStyle: const TextStyle(color: Colors.white, fontSize: 84, height: 1.1, fontWeight: FontWeight.w300, shadows: _clockShadow),
+              textStyle: const TextStyle(color: Colors.white, fontSize: 105, height: 1.1, fontWeight: FontWeight.w300, shadows: _clockShadow),
             ),
         ],
       ),

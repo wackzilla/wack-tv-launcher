@@ -79,14 +79,14 @@ class ScenicDarkBox extends StatelessWidget
 
   @override
   Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(20),
+    borderRadius: BorderRadius.circular(25),
     child: BackdropFilter(
       filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 17.5),
         decoration: BoxDecoration(
           color: ScenicColors.darkGlass,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(25),
           border: Border.all(color: ScenicColors.glassBorder),
         ),
         child: child,
