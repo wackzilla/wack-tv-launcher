@@ -22,14 +22,17 @@ import 'package:flauncher/providers/photo_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-const _rotateEvery = Duration(minutes: 10);
+const _rotateEvery = Duration(minutes: 2);
 const _fadeDuration = Duration(seconds: 2);
 
 /// Crossfades through the downloaded photos in a shuffled order, so all of them come up before
 /// any repeats. Shows a dusk gradient until the first photo has arrived.
 class PhotoBackground extends StatefulWidget
 {
-  const PhotoBackground({super.key});
+  /// Moves on to the next photo whenever this notifies.
+  final Listenable nextPhoto;
+
+  const PhotoBackground({super.key, required this.nextPhoto});
 
   @override
   State<PhotoBackground> createState() => _PhotoBackgroundState();
@@ -39,7 +42,7 @@ class _PhotoBackgroundState extends State<PhotoBackground>
 {
   final List<File> _queue = [];
   late final PhotoService _photoService;
-  late final Timer _timer;
+  late Timer _timer;
   File? _current;
 
   @override
@@ -48,6 +51,11 @@ class _PhotoBackgroundState extends State<PhotoBackground>
     _photoService = context.read<PhotoService>();
     _photoService.addListener(_onPhotosChanged);
     _photoService.start();
+    widget.nextPhoto.addListener(_onNextPhoto);
+    _startTimer();
+  }
+
+  void _startTimer() {
     _timer = Timer.periodic(_rotateEvery, (_) {
       // No point decoding photos behind whatever app is open.
       if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
@@ -56,9 +64,17 @@ class _PhotoBackgroundState extends State<PhotoBackground>
     });
   }
 
+  // Starts the wait over, so a photo that was just asked for gets its full time on screen.
+  void _onNextPhoto() {
+    _timer.cancel();
+    _startTimer();
+    _showNext();
+  }
+
   @override
   void dispose() {
     _timer.cancel();
+    widget.nextPhoto.removeListener(_onNextPhoto);
     _photoService.removeListener(_onPhotosChanged);
     super.dispose();
   }

@@ -49,6 +49,8 @@ const _clockTop = 140.0;
 const _clockTopRaised = 62.0;
 const _weatherOffset = 10.0;
 const _infoBoxMove = Duration(milliseconds: 220);
+// Lines the next photo button up with the middle of the clock.
+const _nextPhotoOffset = 66.0;
 
 const _clockShadow = [Shadow(color: Color(0x99000000), offset: Offset(0, 2), blurRadius: 12)];
 
@@ -67,6 +69,9 @@ class _ScenicHomeState extends State<ScenicHome>
   // One node per app, kept across rebuilds so an icon stays selected while it's moved around.
   final Map<String, FocusNode> _focusNodes = {};
   final FocusNode _settingsFocusNode = FocusNode(debugLabel: "settings button");
+  final FocusNode _networkFocusNode = FocusNode(debugLabel: "network button");
+  final FocusNode _nextPhotoFocusNode = FocusNode(debugLabel: "next photo button");
+  final ValueNotifier<int> _nextPhoto = ValueNotifier(0);
   final ValueNotifier<String> _focusedAppName = ValueNotifier("");
 
   String? _firstDockPackage;
@@ -94,6 +99,9 @@ class _ScenicHomeState extends State<ScenicHome>
       node.dispose();
     }
     _settingsFocusNode.dispose();
+    _networkFocusNode.dispose();
+    _nextPhotoFocusNode.dispose();
+    _nextPhoto.dispose();
     _focusedAppName.dispose();
     super.dispose();
   }
@@ -103,6 +111,7 @@ class _ScenicHomeState extends State<ScenicHome>
       _homePressedCount = _launcherState.homePressedCount;
       _menuOpen = _launcherState.startMenuOpen;
       _movingPackage = null;
+      _nextPhoto.value++;
       setState(() => _rowsOpen = false);
       _focusAfterFrame(() => _focusNodes[_firstDockPackage] ?? _focusNodes[_firstRowPackage] ?? _settingsFocusNode);
     }
@@ -158,7 +167,7 @@ class _ScenicHomeState extends State<ScenicHome>
       child: Stack(
         fit: StackFit.expand,
         children: [
-          const PhotoBackground(),
+          PhotoBackground(nextPhoto: _nextPhoto),
           Consumer<LauncherState>(
             builder: (context, state, _) {
               if (!state.launcherVisible) {
@@ -168,6 +177,13 @@ class _ScenicHomeState extends State<ScenicHome>
               return Stack(
                 fit: StackFit.expand,
                 children: [
+                  AnimatedPositioned(
+                    duration: _infoBoxMove,
+                    curve: Curves.easeOut,
+                    left: 32,
+                    top: (_infoBoxesRaised ? _clockTopRaised : _clockTop) + _nextPhotoOffset,
+                    child: ExcludeFocus(excluding: state.startMenuOpen, child: _nextPhotoButton()),
+                  ),
                   AnimatedPositioned(
                     duration: _infoBoxMove,
                     curve: Curves.easeOut,
@@ -204,10 +220,30 @@ class _ScenicHomeState extends State<ScenicHome>
     ),
   );
 
+  Widget _nextPhotoButton() => Focus(
+    canRequestFocus: false,
+    skipTraversal: true,
+    onKeyEvent: (_, event) {
+      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowRight) {
+        (_focusNodes[_firstDockPackage] ?? _focusNodes[_firstRowPackage])?.requestFocus();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    },
+    child: _RoundButton(
+      focusNode: _nextPhotoFocusNode,
+      size: 44,
+      iconSize: 30,
+      onPressed: () => _nextPhoto.value++,
+      child: const Icon(Icons.chevron_right),
+    ),
+  );
+
   Widget _topButtons(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
       _RoundButton(
+        focusNode: _networkFocusNode,
         onPressed: () => context.read<AppsService>().launchActivityFromAction(_wifiSettingsAction),
         child: const NetworkWidget(),
       ),
@@ -274,6 +310,15 @@ class _ScenicHomeState extends State<ScenicHome>
     onKeyEvent: (_, event) {
       if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowDown && hasRows && !_rowsOpen) {
         _openRows();
+        return KeyEventResult.handled;
+      }
+      // Named here because the nearest thing in those directions depends on how many apps are pinned.
+      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowUp) {
+        _networkFocusNode.requestFocus();
+        return KeyEventResult.handled;
+      }
+      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowLeft && _focusNodes[_firstDockPackage]?.hasPrimaryFocus == true) {
+        _nextPhotoFocusNode.requestFocus();
         return KeyEventResult.handled;
       }
       return KeyEventResult.ignored;
@@ -468,8 +513,10 @@ class _RoundButton extends StatelessWidget
   final Widget child;
   final VoidCallback onPressed;
   final FocusNode? focusNode;
+  final double size;
+  final double iconSize;
 
-  const _RoundButton({required this.child, required this.onPressed, this.focusNode});
+  const _RoundButton({required this.child, required this.onPressed, this.focusNode, this.size = 34, this.iconSize = 18});
 
   @override
   Widget build(BuildContext context) => XpPressable(
@@ -477,14 +524,14 @@ class _RoundButton extends StatelessWidget
     onPressed: onPressed,
     builder: (context, focused) => AnimatedContainer(
       duration: const Duration(milliseconds: 120),
-      width: 34,
-      height: 34,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: focused ? Colors.white : ScenicColors.glassStrong,
       ),
       child: IconTheme(
-        data: IconThemeData(color: focused ? Colors.black87 : Colors.white, size: 18),
+        data: IconThemeData(color: focused ? Colors.black87 : Colors.white, size: iconSize),
         child: child,
       ),
     ),
