@@ -32,6 +32,8 @@ import '../models/tv_input.dart';
 
 export '../models/tv_input.dart';
 
+const _ownPackageName = "com.wack.tvlauncher";
+
 class AppsService extends ChangeNotifier
 {
   final FLauncherChannel _fLauncherChannel;
@@ -270,6 +272,28 @@ class AppsService extends ChangeNotifier
   Future<void> startAmbientMode() => _fLauncherChannel.startAmbientMode();
 
   App? findApplication(String packageName) => _applications[packageName];
+
+  /// Every app on the launcher's groups, in group order, each shown once. The launcher doesn't
+  /// show itself on its own home screen.
+  List<({App app, Category category})> get desktopApps {
+    final seen = <String>{};
+    final entries = <({App app, Category category})>[];
+
+    for (final section in launcherSections) {
+      if (section is! Category) {
+        continue;
+      }
+      for (final app in section.applications) {
+        if (app.packageName == _ownPackageName) {
+          continue;
+        }
+        if (!app.hidden && seen.add(app.packageName)) {
+          entries.add((app: app, category: section));
+        }
+      }
+    }
+    return entries;
+  }
 
   Future<void> launchActivityFromAction(String action) => _fLauncherChannel.launchActivityFromAction(action);
 

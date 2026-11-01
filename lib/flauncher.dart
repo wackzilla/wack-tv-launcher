@@ -21,6 +21,7 @@ import 'package:flauncher/providers/apps_service.dart';
 import 'package:flauncher/providers/launcher_state.dart';
 import 'package:flauncher/providers/settings_service.dart';
 import 'package:flauncher/providers/wallpaper_service.dart';
+import 'package:flauncher/scenic/scenic_home.dart';
 import 'package:flauncher/widgets/launcher_alternative_view.dart';
 import 'package:flauncher/xp/app_context_menu.dart';
 import 'package:flauncher/xp/app_icon.dart';
@@ -33,9 +34,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'models/category.dart';
-
-/// The launcher doesn't show itself on its own desktop.
-const _ownPackageName = "com.wack.tvlauncher";
 
 const double _iconHeight = 92;
 const double _iconSpacing = 6;
@@ -106,7 +104,9 @@ class _FLauncherState extends State<FLauncher> {
       });
 
   @override
-  Widget build(BuildContext context) => Focus(
+  Widget build(BuildContext context) => context.select<SettingsService, bool>((settings) => settings.scenicTheme)
+    ? const ScenicHome()
+    : Focus(
     canRequestFocus: false,
     skipTraversal: true,
     onKeyEvent: (_, event) {
@@ -142,7 +142,7 @@ class _FLauncherState extends State<FLauncher> {
                     ExcludeFocus(
                       excluding: state.startMenuOpen,
                       child: Selector<AppsService, bool>(
-                        selector: (_, appsService) => appsService.initialized && _desktopApps(appsService).isEmpty,
+                        selector: (_, appsService) => appsService.initialized && appsService.desktopApps.isEmpty,
                         builder: (_, desktopEmpty, __) => Taskbar(
                           startButtonFocusNode: _startButtonFocusNode,
                           startButtonAutofocus: desktopEmpty,
@@ -194,7 +194,7 @@ class _FLauncherState extends State<FLauncher> {
         return const Center(child: CircularProgressIndicator(color: Colors.white));
       }
 
-      final entries = _desktopApps(appsService);
+      final entries = appsService.desktopApps;
       _firstIconPackage = entries.isEmpty ? null : entries.first.app.packageName;
 
       return LayoutBuilder(
@@ -254,26 +254,6 @@ class _FLauncherState extends State<FLauncher> {
     appsService.saveApplicationOrderInCategory(category);
   }
 
-  /// Every app on the launcher's groups, in group order, each shown once.
-  static List<({App app, Category category})> _desktopApps(AppsService appsService) {
-    final seen = <String>{};
-    final entries = <({App app, Category category})>[];
-
-    for (final section in appsService.launcherSections) {
-      if (section is! Category) {
-        continue;
-      }
-      for (final app in section.applications) {
-        if (app.packageName == _ownPackageName) {
-          continue;
-        }
-        if (!app.hidden && seen.add(app.packageName)) {
-          entries.add((app: app, category: section));
-        }
-      }
-    }
-    return entries;
-  }
 }
 
 class _DesktopIcon extends StatelessWidget {

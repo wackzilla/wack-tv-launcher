@@ -40,8 +40,14 @@ const _startMenuPinned = "start_menu_pinned";
 const _taskbarPinned = "taskbar_pinned";
 const _recentApps = "recent_apps";
 const _userName = "user_name";
+const _scenicTheme = "scenic_theme";
+const _weatherLatitude = "weather_latitude";
+const _weatherLongitude = "weather_longitude";
+const _weatherPlace = "weather_place";
 
 const _maxRecentApps = 6;
+
+typedef WeatherLocation = ({double latitude, double longitude, String name});
 
 class SettingsService extends ChangeNotifier {
   // The taskbar clock shows time over date like Windows 11: "5:07 PM" / "10/21/2026"
@@ -82,6 +88,18 @@ class SettingsService extends ChangeNotifier {
 
   String get userName => _sharedPreferences.getString(_userName) ?? "Wack";
 
+  bool get scenicTheme => _sharedPreferences.getBool(_scenicTheme) ?? false;
+
+  /// Null until it's set on this TV. Only ever stored on the TV.
+  WeatherLocation? get weatherLocation {
+    final latitude = _sharedPreferences.getDouble(_weatherLatitude);
+    final longitude = _sharedPreferences.getDouble(_weatherLongitude);
+    final name = _sharedPreferences.getString(_weatherPlace);
+    return latitude == null || longitude == null || name == null
+        ? null
+        : (latitude: latitude, longitude: longitude, name: name);
+  }
+
   SettingsService(
     this._sharedPreferences
   );
@@ -92,6 +110,19 @@ class SettingsService extends ChangeNotifier {
 
   Future<void> setGuardStockLauncher(bool value) async {
     return set(_guardStockLauncher, value);
+  }
+
+  Future<void> setScenicTheme(bool value) async {
+    return set(_scenicTheme, value);
+  }
+
+  Future<void> setWeatherLocation(WeatherLocation location) async {
+    await Future.wait([
+      _sharedPreferences.setDouble(_weatherLatitude, location.latitude),
+      _sharedPreferences.setDouble(_weatherLongitude, location.longitude),
+      _sharedPreferences.setString(_weatherPlace, location.name),
+    ]);
+    notifyListeners();
   }
 
   Future<void> setUserName(String value) async {

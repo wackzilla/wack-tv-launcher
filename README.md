@@ -15,6 +15,16 @@ Not affiliated with Microsoft. The wallpaper and logo are original drawings in t
 - **App options:** hold OK, or press Menu, on any app to open it, pin it to the Start menu or taskbar, move it, add it to a group, hide it, open its properties, or uninstall it
 - **Home button override:** an accessibility service makes the remote's Home button always come back to Wack XP, and reopens it if the stock home screen shows up. Both can be turned off in Launcher Settings.
 
+## Scenic theme
+
+Turn on **Scenic theme** in Launcher Settings for a modern look with the same features:
+
+- **Background:** photos from [r/EarthPorn](https://www.reddit.com/r/EarthPorn/) that crossfade every 10 minutes. The TV downloads 250 landscape photos once, resized to 1080p and kept in the app's private storage (under 250 MB), then never fetches any more. It goes slowly to respect Reddit's rate limit, carries on after a restart, and shows Bing's daily photos if Reddit can't be reached at first.
+- **Dock:** only your pinned apps. Hold OK on an app and choose **Pin to Dock**.
+- **Other apps:** press Down from the dock to reveal the rest of your apps. They stay hidden until then.
+- **Top right:** network, power and settings. The settings button (or Menu) holds what the Start menu has: Android settings, launcher settings, TV inputs, hidden apps, screensaver, help and about.
+- **Weather:** from [Open-Meteo](https://open-meteo.com/). The home screen shows a **Set weather location** button until you enter a ZIP code, which is looked up once and saved only on the TV. Change it under **Weather Location** in the settings menu.
+
 ## Remote
 
 | Button | Does |

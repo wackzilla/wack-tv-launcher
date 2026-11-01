@@ -52,6 +52,54 @@ class _TurnOffDialog extends StatelessWidget
       }
     }
 
+    final powerButtons = Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _PowerButton(
+          label: "Stand By",
+          icon: Icons.nightlight_round,
+          colors: const [Color(0xFFFFE27A), Color(0xFFE0A81A)],
+          onPressed: standBy,
+          autofocus: true,
+        ),
+        _PowerButton(
+          label: "Turn Off",
+          icon: Icons.power_settings_new,
+          colors: const [Color(0xFFF58C6C), Color(0xFFC9300F)],
+          onPressed: powerMenu,
+        ),
+        _PowerButton(
+          label: "Restart",
+          icon: Icons.restart_alt,
+          colors: const [Color(0xFF8BD67A), Color(0xFF2F9A1B)],
+          onPressed: powerMenu,
+        ),
+      ],
+    );
+
+    if (scenicThemeOf(context)) {
+      return XpWindow(
+        title: "Power",
+        icon: Icons.power_settings_new,
+        width: 440,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              powerButtons,
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerRight,
+                child: XpButton(label: "Cancel", onPressed: () => Navigator.of(context).pop()),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Container(
       width: 440,
       decoration: const BoxDecoration(
@@ -80,30 +128,7 @@ class _TurnOffDialog extends StatelessWidget
                 colors: [Color(0xFF7BA2E7), Color(0xFF5A82D6), Color(0xFF4062C2)],
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _PowerButton(
-                  label: "Stand By",
-                  icon: Icons.nightlight_round,
-                  colors: const [Color(0xFFFFE27A), Color(0xFFE0A81A)],
-                  onPressed: standBy,
-                  autofocus: true,
-                ),
-                _PowerButton(
-                  label: "Turn Off",
-                  icon: Icons.power_settings_new,
-                  colors: const [Color(0xFFF58C6C), Color(0xFFC9300F)],
-                  onPressed: powerMenu,
-                ),
-                _PowerButton(
-                  label: "Restart",
-                  icon: Icons.restart_alt,
-                  colors: const [Color(0xFF8BD67A), Color(0xFF2F9A1B)],
-                  onPressed: powerMenu,
-                ),
-              ],
-            ),
+            child: powerButtons,
           ),
           Container(
             color: const Color(0xFF00309C),
@@ -208,7 +233,33 @@ Future<void> showHomeServiceHelp(BuildContext context, {String reason = "The Hom
     ));
 
 Future<void> showHelpAndSupport(BuildContext context) => showXpDialog(context, Builder(
-  builder: (context) => XpWindow(
+  builder: (context) => scenicThemeOf(context) ? XpWindow(
+    title: "Help",
+    icon: Icons.help_outline,
+    width: 600,
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _HelpLine(Icons.touch_app, "OK", "Open the selected app or item.", color: Colors.white),
+          const _HelpLine(Icons.back_hand_outlined, "Hold OK", "Options for an app: pin it to the dock, move it, hide it, see its properties or uninstall it.", color: Colors.white),
+          const _HelpLine(Icons.menu, "Menu", "The same options as holding OK. Anywhere else, Menu opens the settings menu.", color: Colors.white),
+          const _HelpLine(Icons.keyboard_arrow_down, "Down", "From the dock, shows the rest of your apps.", color: Colors.white),
+          const _HelpLine(Icons.keyboard_arrow_up, "Up", "From the dock, reaches the network, power and settings buttons.", color: Colors.white),
+          const _HelpLine(Icons.home_outlined, "Home", "Always comes back here, closing whatever is open.", color: Colors.white),
+          const _HelpLine(Icons.arrow_back, "Back", "Closes the app rows, the settings menu or the current window.", color: Colors.white),
+          const _HelpLine(Icons.visibility_off_outlined, "Hidden Apps", "In the settings menu. Hold OK on a hidden app to show it on the home screen again.", color: Colors.white),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: XpButton(label: "OK", autofocus: true, onPressed: () => Navigator.of(context).pop()),
+          ),
+        ],
+      ),
+    ),
+  ) : XpWindow(
     title: "Help and Support Center",
     icon: Icons.help_outline,
     width: 600,
@@ -245,8 +296,9 @@ class _HelpLine extends StatelessWidget
   final IconData icon;
   final String keyName;
   final String text;
+  final Color color;
 
-  const _HelpLine(this.icon, this.keyName, this.text);
+  const _HelpLine(this.icon, this.keyName, this.text, {this.color = XpColors.textBlue});
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -254,7 +306,7 @@ class _HelpLine extends StatelessWidget
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 18, color: XpColors.textBlue),
+        Icon(icon, size: 18, color: color),
         const SizedBox(width: 8),
         SizedBox(width: 110, child: Text(keyName, style: const TextStyle(fontWeight: FontWeight.bold))),
         Expanded(child: Text(text)),
@@ -264,7 +316,37 @@ class _HelpLine extends StatelessWidget
 }
 
 Future<void> showAboutWackXp(BuildContext context) => showXpDialog(context, Builder(
-  builder: (context) => XpWindow(
+  builder: (context) => scenicThemeOf(context) ? XpWindow(
+    title: "About",
+    icon: Icons.info_outline,
+    width: 520,
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Wack XP, Scenic theme", style: TextStyle(fontSize: 22)),
+          const SizedBox(height: 8),
+          FutureBuilder<PackageInfo>(
+            future: PackageInfo.fromPlatform(),
+            builder: (context, snapshot) => Text("Version ${snapshot.data?.version ?? ""}"),
+          ),
+          const SizedBox(height: 8),
+          const Text("A home screen for Android TV, built on FLauncher.\n"
+              "FLauncher is © Étienne Fesser, Oscar Rojas and contributors, and is free software "
+              "under the GNU General Public License v3.0. So is Wack XP.\n\n"
+              "Photos from r/EarthPorn on Reddit, or Bing if Reddit can't be reached. "
+              "Each photo belongs to its photographer. Weather by Open-Meteo."),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerRight,
+            child: XpButton(label: "OK", autofocus: true, onPressed: () => Navigator.of(context).pop()),
+          ),
+        ],
+      ),
+    ),
+  ) : XpWindow(
     title: "About Wack XP",
     icon: Icons.info_outline,
     width: 520,

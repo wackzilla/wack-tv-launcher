@@ -82,6 +82,16 @@ class FLauncherChannel {
 
   Future<bool> showPowerDialog() async => await _methodChannel.invokeMethod("showPowerDialog");
 
+  /// Saves [source] to [target] as a TV-sized JPEG. False if it's not a landscape photo of at
+  /// least [minWidth] by [minHeight], or it can't be read.
+  Future<bool> resizePhoto(String source, String target, int minWidth, int minHeight) async =>
+      await _methodChannel.invokeMethod("resizePhoto", {
+        "source": source,
+        "target": target,
+        "minWidth": minWidth,
+        "minHeight": minHeight,
+      });
+
   /// Called when the remote's Home button brings the launcher back to the front.
   void setHomePressedListener(void Function() listener) =>
       _methodChannel.setMethodCallHandler((call) async {

@@ -62,17 +62,25 @@ class _AppContextMenu extends StatelessWidget
     final bool onStartMenu = settingsService.startMenuPinned.contains(app.packageName);
     final bool onTaskbar = settingsService.taskbarPinned.contains(app.packageName);
     final bool canMove = category != null && category!.sort == CategorySort.manual;
+    final bool scenic = scenicThemeOf(context);
 
     void close() => Navigator.of(context).pop();
 
     return Container(
       width: 300,
       padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFACA899)),
-        boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 6, offset: Offset(3, 3))],
-      ),
+      clipBehavior: scenic ? Clip.antiAlias : Clip.none,
+      decoration: scenic
+          ? BoxDecoration(
+              color: ScenicColors.window,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: ScenicColors.glassBorder),
+            )
+          : BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: const Color(0xFFACA899)),
+              boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 6, offset: Offset(3, 3))],
+            ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -87,7 +95,7 @@ class _AppContextMenu extends StatelessWidget
                   child: Text(app.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: XpColors.textBlue, fontSize: 14, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: scenic ? Colors.white : XpColors.textBlue, fontSize: 14, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -104,16 +112,20 @@ class _AppContextMenu extends StatelessWidget
             },
           ),
           const XpMenuSeparator(),
+          // The Scenic theme has no Start menu to pin to.
+          if (!scenic)
+            XpMenuItem(
+              label: onStartMenu ? "Unpin from Start menu" : "Pin to Start menu",
+              icon: Icons.push_pin_outlined,
+              onPressed: () {
+                settingsService.toggleStartMenuPin(app.packageName);
+                close();
+              },
+            ),
           XpMenuItem(
-            label: onStartMenu ? "Unpin from Start menu" : "Pin to Start menu",
-            icon: Icons.push_pin_outlined,
-            onPressed: () {
-              settingsService.toggleStartMenuPin(app.packageName);
-              close();
-            },
-          ),
-          XpMenuItem(
-            label: onTaskbar ? "Unpin from Taskbar" : "Pin to Taskbar",
+            label: scenic
+                ? (onTaskbar ? "Unpin from Dock" : "Pin to Dock")
+                : (onTaskbar ? "Unpin from Taskbar" : "Pin to Taskbar"),
             icon: Icons.view_day_outlined,
             onPressed: () {
               settingsService.toggleTaskbarPin(app.packageName);
@@ -122,7 +134,7 @@ class _AppContextMenu extends StatelessWidget
           ),
           if (pinnedIn != null)
             XpMenuItem(
-              label: pinnedIn == PinnedIn.startMenu ? "Move in Start menu" : "Move on Taskbar",
+              label: pinnedIn == PinnedIn.startMenu ? "Move in Start menu" : scenic ? "Move in Dock" : "Move on Taskbar",
               icon: Icons.open_with,
               onPressed: () => Navigator.of(context).pop(AppContextMenuResult.move),
             ),
@@ -168,7 +180,9 @@ class _AppContextMenu extends StatelessWidget
               },
             ),
           XpMenuItem(
-            label: app.hidden ? "Show on desktop" : "Hide from desktop",
+            label: scenic
+                ? (app.hidden ? "Show on home screen" : "Hide from home screen")
+                : (app.hidden ? "Show on desktop" : "Hide from desktop"),
             icon: app.hidden ? Icons.visibility : Icons.visibility_off_outlined,
             onPressed: () {
               if (app.hidden) {
@@ -221,33 +235,45 @@ class XpMenuItem extends StatelessWidget
   });
 
   @override
-  Widget build(BuildContext context) => XpPressable(
-    autofocus: autofocus,
-    onPressed: onPressed,
-    builder: (context, focused) => Container(
-      color: focused ? XpColors.menuHover : null,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 24,
-            child: icon == null ? null : Icon(icon, size: 16, color: focused ? Colors.white : XpColors.textBlue),
+  Widget build(BuildContext context) {
+    final bool scenic = scenicThemeOf(context);
+
+    return XpPressable(
+      autofocus: autofocus,
+      onPressed: onPressed,
+      builder: (context, focused) {
+        final Color selection = scenic ? Colors.white : XpColors.menuHover;
+        final Color selectedText = scenic ? Colors.black87 : Colors.white;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: focused ? selection : null,
+            borderRadius: scenic ? BorderRadius.circular(8) : null,
           ),
-          Expanded(
-            child: Text(label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: focused ? Colors.white : XpColors.textDark,
-                fontSize: 13,
-                fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 24,
+                child: icon == null ? null : Icon(icon, size: 16, color: focused ? selectedText : scenic ? Colors.white : XpColors.textBlue),
               ),
-            ),
+              Expanded(
+                child: Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: focused ? selectedText : scenic ? Colors.white : XpColors.textDark,
+                    fontSize: 13,
+                    fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    ),
-  );
+        );
+      },
+    );
+  }
 }
 
 class XpMenuSeparator extends StatelessWidget
@@ -258,6 +284,6 @@ class XpMenuSeparator extends StatelessWidget
   Widget build(BuildContext context) => Container(
     height: 1,
     margin: const EdgeInsets.symmetric(vertical: 3, horizontal: 2),
-    color: const Color(0xFFACA899),
+    color: scenicThemeOf(context) ? ScenicColors.glassBorder : const Color(0xFFACA899),
   );
 }

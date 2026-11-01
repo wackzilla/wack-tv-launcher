@@ -19,6 +19,7 @@
 import 'package:flauncher/actions.dart';
 import 'package:flauncher/providers/apps_service.dart';
 import 'package:flauncher/providers/launcher_state.dart';
+import 'package:flauncher/providers/settings_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -49,6 +50,20 @@ class FLauncherApp extends StatelessWidget
     900: Color(0xFF020B21),
   });
 
+  // Neutral slate for the Scenic theme's settings panels
+  static const MaterialColor _scenicSwatch = MaterialColor(0xFF2A303B, <int, Color>{
+    50: Color(0xFFB8C0CE),
+    100: Color(0xFF8E98AA),
+    200: Color(0xFF667184),
+    300: Color(0xFF2F3644),
+    400: Color(0xFF242A35),
+    500: Color(0xFF2A303B),
+    600: Color(0xFF1F242D),
+    700: Color(0xFF181C23),
+    800: Color(0xFF12151A),
+    900: Color(0xFF0B0D10),
+  });
+
   const FLauncherApp();
 
   @override
@@ -56,6 +71,7 @@ class FLauncherApp extends StatelessWidget
     AppsService appsService = context.read<AppsService>();
     LauncherState launcherState = context.read<LauncherState>();
     launcherState.refresh(appsService);
+    final MaterialColor swatch = context.select<SettingsService, bool>((settings) => settings.scenicTheme) ? _scenicSwatch : _swatch;
 
     return MaterialApp(
       navigatorKey: launcherState.navigatorKey,
@@ -81,12 +97,12 @@ class FLauncherApp extends StatelessWidget
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        primarySwatch: _swatch,
-        primaryColor: _swatch[400],
-        cardColor: _swatch[300],
-        canvasColor: _swatch[300],
-        dialogBackgroundColor: _swatch[400],
-        scaffoldBackgroundColor: _swatch[400],
+        primarySwatch: swatch,
+        primaryColor: swatch[400],
+        cardColor: swatch[300],
+        canvasColor: swatch[300],
+        dialogBackgroundColor: swatch[400],
+        scaffoldBackgroundColor: swatch[400],
         textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: Colors.white)),
         appBarTheme: const AppBarTheme(elevation: 0, backgroundColor: Colors.transparent),
         typography: Typography.material2018(),
@@ -96,8 +112,8 @@ class FLauncherApp extends StatelessWidget
         ),
         textSelectionTheme: TextSelectionThemeData(
           cursorColor: Colors.white,
-          selectionColor: _swatch[200],
-          selectionHandleColor: _swatch[200],
+          selectionColor: swatch[200],
+          selectionHandleColor: swatch[200],
         ),
       ),
       home: Builder(

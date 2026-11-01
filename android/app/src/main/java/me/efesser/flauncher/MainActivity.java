@@ -22,9 +22,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.*;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.media.ExifInterface;
 import android.media.tv.TvContract;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
@@ -43,6 +45,9 @@ import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.MethodChannel;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -63,8 +68,13 @@ public class MainActivity extends FlutterActivity
 
     static final String ACTION_HOME_PRESSED = "com.wack.tvlauncher.HOME_PRESSED";
     private static final String TV_APP = "com.mediatek.wwtv.tvcenter";
+    private static final int PHOTO_WIDTH = 1920;
+    private static final int PHOTO_HEIGHT = 1080;
+    private static final float PHOTO_MIN_RATIO = 1.3f;
+    private static final float PHOTO_MAX_RATIO = 2.4f;
 
     private MethodChannel methodChannel;
+    private final ExecutorService photoExecutor = Executors.newSingleThreadExecutor();
 
     @Override
     public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine)
@@ -97,6 +107,7 @@ public class MainActivity extends FlutterActivity
                 case "isHomeServiceEnabled" -> result.success(isHomeServiceEnabled());
                 case "standBy" -> result.success(standBy());
                 case "showPowerDialog" -> result.success(showPowerDialog());
+                case "resizePhoto" -> resizePhoto(call.argument("source"), call.argument("target"), call.argument("minWidth"), call.argument("minHeight"), result);
                 default -> throw new IllegalArgumentException();
             }
         });
@@ -525,5 +536,66 @@ public class MainActivity extends FlutterActivity
         drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
         drawable.draw(canvas);
         return bitmap;
+    }
+
+    private void resizePhoto(String source, String target, int minWidth, int minHeight, MethodChannel.Result result)
+    {
+        photoExecutor.execute(() -> {
+            boolean saved = saveResizedPhoto(source, target, minWidth, minHeight);
+            runOnUiThread(() -> result.success(saved));
+        });
+    }
+
+    private boolean saveResizedPhoto(String source, String target, int minWidth, int minHeight)
+    {
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(source, options);
+
+        int width = options.outWidth;
+        int height = options.outHeight;
+        if (width < minWidth || height < minHeight || (float) width / height > PHOTO_MAX_RATIO || (float) width / height < PHOTO_MIN_RATIO) {
+            return false;
+        }
+
+        File temporary = new File(target + ".part");
+        try {
+            // BitmapFactory ignores this tag, so a rotated photo would show sideways.
+            int orientation = new ExifInterface(source).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+            if (orientation != ExifInterface.ORIENTATION_NORMAL && orientation != ExifInterface.ORIENTATION_UNDEFINED) {
+                return false;
+            }
+
+            int sampleSize = 1;
+            while (width / (sampleSize * 2) >= PHOTO_WIDTH && height / (sampleSize * 2) >= PHOTO_HEIGHT) {
+                sampleSize *= 2;
+            }
+            options.inJustDecodeBounds = false;
+            options.inSampleSize = sampleSize;
+
+            Bitmap decoded = BitmapFactory.decodeFile(source, options);
+            if (decoded == null) {
+                return false;
+            }
+
+            float scale = Math.max((float) PHOTO_WIDTH / decoded.getWidth(), (float) PHOTO_HEIGHT / decoded.getHeight());
+            Bitmap resized = scale < 1
+                    ? Bitmap.createScaledBitmap(decoded, Math.round(decoded.getWidth() * scale), Math.round(decoded.getHeight() * scale), true)
+                    : decoded;
+
+            try (FileOutputStream stream = new FileOutputStream(temporary)) {
+                resized.compress(Bitmap.CompressFormat.JPEG, 85, stream);
+            }
+            if (resized != decoded) {
+                resized.recycle();
+            }
+            decoded.recycle();
+
+            return temporary.renameTo(new File(target));
+        }
+        catch (IOException | OutOfMemoryError e) {
+            temporary.delete();
+            return false;
+        }
     }
 }

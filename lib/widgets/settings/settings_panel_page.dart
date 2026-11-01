@@ -17,6 +17,7 @@
  */
 
 import 'package:flauncher/providers/apps_service.dart';
+import 'package:flauncher/providers/photo_service.dart';
 import 'package:flauncher/providers/settings_service.dart';
 import 'package:flauncher/widgets/ensure_visible.dart';
 import 'package:flauncher/widgets/settings/applications_panel_page.dart';
@@ -75,16 +76,44 @@ class SettingsPanelPage extends StatelessWidget {
                     ),
                     onPressed: () => Navigator.of(context).pushNamed(LauncherSectionsPanelPage.routeName),
                   ),
-                  TextButton(
-                    child: Row(
-                      children: [
-                        const Icon(Icons.wallpaper_outlined),
-                        Container(width: 8),
-                        Text(localizations.wallpaper, style: Theme.of(context).textTheme.bodyMedium),
-                      ],
-                    ),
-                    onPressed: () => Navigator.of(context).pushNamed(WallpaperPanelPage.routeName),
+                  RoundedSwitchListTile(
+                    value: settingsService.scenicTheme,
+                    onChanged: (value) => settingsService.setScenicTheme(value),
+                    title: Text("Scenic theme", style: Theme.of(context).textTheme.bodyMedium),
+                    secondary: const Icon(Icons.landscape_outlined),
                   ),
+                  // The Scenic theme's background is its photos, not the chosen wallpaper.
+                  if (settingsService.scenicTheme)
+                    Consumer<PhotoService>(
+                      builder: (context, photoService, _) => Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.photo_library_outlined),
+                            Container(width: 8),
+                            Flexible(
+                              child: Text(
+                                photoService.complete
+                                    ? "${photoService.photos.length} photos downloaded"
+                                    : "Downloading photos: ${photoService.redditPhotoCount} of ${PhotoService.targetCount}",
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    TextButton(
+                      child: Row(
+                        children: [
+                          const Icon(Icons.wallpaper_outlined),
+                          Container(width: 8),
+                          Text(localizations.wallpaper, style: Theme.of(context).textTheme.bodyMedium),
+                        ],
+                      ),
+                      onPressed: () => Navigator.of(context).pushNamed(WallpaperPanelPage.routeName),
+                    ),
                   TextButton(
                     child: Row(
                       children: [

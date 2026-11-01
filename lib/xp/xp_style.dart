@@ -15,9 +15,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import 'package:flauncher/providers/settings_service.dart';
 import 'package:flauncher/widgets/focus_keyboard_listener.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 /// Colors of the Windows XP "Luna" (blue) theme.
 class XpColors
@@ -54,6 +56,19 @@ class XpColors
   static const textBlue = Color(0xFF0B2F79);
   static const textGrey = Color(0xFF6D6D6D);
 }
+
+/// Colors of the Scenic theme: dark glass over the photos.
+class ScenicColors
+{
+  static const glass = Color(0x33FFFFFF);
+  static const glassStrong = Color(0x66202530);
+  static const glassBorder = Color(0x4DFFFFFF);
+  static const window = Color(0xF21B2029);
+  static const accent = Color(0xFFFFC44D);
+}
+
+/// Whether the Scenic theme is on. Call it from a build method, so the widget follows the setting.
+bool scenicThemeOf(BuildContext context) => context.select<SettingsService, bool>((settings) => settings.scenicTheme);
 
 const xpTextShadow = [Shadow(color: Color(0xCC000000), offset: Offset(1, 1), blurRadius: 2)];
 
@@ -205,7 +220,7 @@ class XpWindow extends StatelessWidget
   });
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => scenicThemeOf(context) ? _scenicWindow() : Container(
     width: width,
     decoration: BoxDecoration(
       color: XpColors.windowBorder,
@@ -257,6 +272,41 @@ class XpWindow extends StatelessWidget
       ],
     ),
   );
+
+  Widget _scenicWindow() => Container(
+    width: width,
+    decoration: BoxDecoration(
+      color: ScenicColors.window,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: ScenicColors.glassBorder),
+      boxShadow: const [BoxShadow(color: Color(0x80000000), blurRadius: 18, offset: Offset(0, 6))],
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(title,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+        ),
+        DefaultTextStyle(
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          child: child,
+        ),
+      ],
+    ),
+  );
 }
 
 class _TitleBarButton extends StatelessWidget
@@ -295,7 +345,22 @@ class XpButton extends StatelessWidget
   const XpButton({super.key, required this.label, required this.onPressed, this.autofocus = false});
 
   @override
-  Widget build(BuildContext context) => XpPressable(
+  Widget build(BuildContext context) => scenicThemeOf(context) ? XpPressable(
+    autofocus: autofocus,
+    onPressed: onPressed,
+    builder: (context, focused) => Container(
+      constraints: const BoxConstraints(minWidth: 84),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(9),
+        color: focused ? Colors.white : ScenicColors.glass,
+      ),
+      child: Text(label,
+        textAlign: TextAlign.center,
+        style: TextStyle(color: focused ? Colors.black87 : Colors.white, fontSize: 13),
+      ),
+    ),
+  ) : XpPressable(
     autofocus: autofocus,
     onPressed: onPressed,
     builder: (context, focused) => Container(
