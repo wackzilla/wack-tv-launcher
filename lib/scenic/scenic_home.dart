@@ -44,13 +44,13 @@ const _itemsPerRow = 8;
 const _rowsMaxHeight = 188.0;
 
 const _infoBoxInset = 110.0;
-const _clockTop = 140.0;
+const _clockTop = 160.0;
 // Clear of the dock once the app rows have pushed it up.
 const _clockTopRaised = 62.0;
-const _weatherOffset = 10.0;
+const _weatherOffset = 8.0;
 const _infoBoxMove = Duration(milliseconds: 220);
 // Lines the next photo button up with the middle of the clock.
-const _nextPhotoOffset = 66.0;
+const _nextPhotoOffset = 44.0;
 
 const _clockShadow = [Shadow(color: Color(0x99000000), offset: Offset(0, 2), blurRadius: 12)];
 
@@ -328,7 +328,7 @@ class _ScenicHomeState extends State<ScenicHome>
         constraints: const BoxConstraints(maxWidth: 880),
         child: Stack(
           children: [
-            const Positioned.fill(child: _GlassPanel(radius: 24)),
+            const Positioned.fill(child: _GlassPanel(radius: 18)),
             if (pinned.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 24, vertical: 22),
@@ -341,7 +341,7 @@ class _ScenicHomeState extends State<ScenicHome>
                 scrollDirection: Axis.horizontal,
                 // The selected icon grows out of the dock.
                 clipBehavior: Clip.none,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -453,7 +453,7 @@ class _ScenicHomeState extends State<ScenicHome>
   }
 }
 
-/// Frosted glass, like the dock in the mockup.
+/// The same see-through dark glass as the clock and weather boxes.
 class _GlassPanel extends StatelessWidget
 {
   final double radius;
@@ -464,10 +464,10 @@ class _GlassPanel extends StatelessWidget
   Widget build(BuildContext context) => ClipRRect(
     borderRadius: BorderRadius.circular(radius),
     child: BackdropFilter(
-      filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+      filter: ui.ImageFilter.blur(sigmaX: ScenicColors.darkGlassBlur, sigmaY: ScenicColors.darkGlassBlur),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: ScenicColors.glass,
+          color: ScenicColors.darkGlass,
           borderRadius: BorderRadius.circular(radius),
           border: Border.all(color: ScenicColors.glassBorder),
         ),
@@ -495,12 +495,12 @@ class _Clock extends StatelessWidget
           if (clock.showDate)
             const DateTimeWidget("EEEE, MMMM d",
               updateInterval: Duration(minutes: 1),
-              textStyle: TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w400, shadows: _clockShadow),
+              textStyle: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w400, shadows: _clockShadow),
             ),
           if (clock.showTime)
             DateTimeWidget(clock.timeFormat,
               key: ValueKey("scenic time ${clock.timeFormat}"),
-              textStyle: const TextStyle(color: Colors.white, fontSize: 105, height: 1.1, fontWeight: FontWeight.w300, shadows: _clockShadow),
+              textStyle: const TextStyle(color: Colors.white, fontSize: 79, height: 1.1, fontWeight: FontWeight.w300, shadows: _clockShadow),
             ),
         ],
       ),
@@ -596,10 +596,10 @@ class _DockIcon extends StatelessWidget
           duration: const Duration(milliseconds: 140),
           curve: Curves.easeOut,
           child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 7),
-            padding: const EdgeInsets.all(3),
+            margin: const EdgeInsets.symmetric(horizontal: 5),
+            padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(11),
               border: Border.all(
                 color: moving ? ScenicColors.accent : focused ? Colors.white : Colors.transparent,
                 width: 2,
@@ -607,8 +607,8 @@ class _DockIcon extends StatelessWidget
               boxShadow: focused || moving ? const [BoxShadow(color: Color(0x80000000), blurRadius: 12, offset: Offset(0, 4))] : null,
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: AppIcon(app.packageName, size: 50),
+              borderRadius: BorderRadius.circular(8),
+              child: AppIcon(app.packageName, size: 38),
             ),
           ),
         ),

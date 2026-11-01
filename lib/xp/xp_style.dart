@@ -67,7 +67,8 @@ class ScenicColors
   static const glassBorder = Color(0x4DFFFFFF);
   static const window = Color(0xF21B2029);
   static const accent = Color(0xFFFFC44D);
-  static const darkGlass = Color(0x66000000);
+  static const darkGlass = Color(0x33000000);
+  static const darkGlassBlur = 6.0;
 }
 
 /// A darkened, see-through box that keeps text readable over any photo.
@@ -79,14 +80,14 @@ class ScenicDarkBox extends StatelessWidget
 
   @override
   Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(25),
+    borderRadius: BorderRadius.circular(19),
     child: BackdropFilter(
-      filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+      filter: ui.ImageFilter.blur(sigmaX: ScenicColors.darkGlassBlur, sigmaY: ScenicColors.darkGlassBlur),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 17.5),
+        padding: const EdgeInsets.symmetric(horizontal: 19, vertical: 13),
         decoration: BoxDecoration(
           color: ScenicColors.darkGlass,
-          borderRadius: BorderRadius.circular(25),
+          borderRadius: BorderRadius.circular(19),
           border: Border.all(color: ScenicColors.glassBorder),
         ),
         child: child,
