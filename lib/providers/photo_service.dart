@@ -47,7 +47,7 @@ final _sizePattern = RegExp(r"(\d{3,5})\s*(?:x|X|×|&#215;)\s*(\d{3,5})");
 /// never touches the network again. Survives restarts by remembering its place in the feed.
 class PhotoService extends ChangeNotifier
 {
-  static const targetCount = 250;
+  static const targetCount = 1000;
 
   final FLauncherChannel _channel;
   final HttpClient _client = HttpClient()
@@ -95,8 +95,11 @@ class PhotoService extends ChangeNotifier
     if (await _stateFile.exists()) {
       try {
         final Map<String, dynamic> state = jsonDecode(await _stateFile.readAsString());
-        _after = state["after"];
-        _complete = state["complete"] ?? false;
+        // A new target restarts from the top of the feed, since the page that reached the old
+        // one was left part way through. Photos already downloaded are skipped.
+        final bool sameTarget = state["target"] == targetCount;
+        _after = sameTarget ? state["after"] : null;
+        _complete = sameTarget && (state["complete"] ?? false);
       }
       on FormatException {
         await _stateFile.delete();
@@ -105,7 +108,7 @@ class PhotoService extends ChangeNotifier
   }
 
   Future<void> _saveState() =>
-      _stateFile.writeAsString(jsonEncode({"after": _after, "complete": _complete}));
+      _stateFile.writeAsString(jsonEncode({"after": _after, "complete": _complete, "target": targetCount}));
 
   Future<void> _loadPhotos() async {
     final files = await _directory.list().where((entity) => entity is File && entity.path.endsWith(".jpg")).toList();
