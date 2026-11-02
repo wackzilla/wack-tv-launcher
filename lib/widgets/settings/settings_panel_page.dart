@@ -95,7 +95,7 @@ class SettingsPanelPage extends StatelessWidget {
                               child: Text(
                                 photoService.complete
                                     ? "${photoService.photos.length} photos downloaded"
-                                    : "Downloading photos: ${photoService.redditPhotoCount} of ${PhotoService.targetCount}",
+                                    : "Downloading photos: ${photoService.photos.length} so far",
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ),

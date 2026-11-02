@@ -23,9 +23,29 @@ import 'package:flauncher/flauncher_channel.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
-const _userAgent = "WackTVLauncher/1.0 (Android TV launcher)";
+// Wikimedia asks for a way to reach whoever runs a client.
+const _userAgent = "WackTVLauncher/1.0 (https://github.com/wackzilla/wack-tv-launcher)";
 const _feedUrl = "https://www.reddit.com/r/EarthPorn/top.rss?t=all&limit=100";
 const _bingUrl = "https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=8";
+
+// Community-chosen photos on Wikimedia Commons. A photo in two of these is only downloaded once.
+const _wikimediaCategories = [
+  "landscapes",
+  "mountains",
+  "lakes",
+  "sunsets",
+  "beaches",
+  "waterfalls",
+  "forests",
+  "coasts",
+  "islands",
+];
+const _wikimediaPageSize = "50";
+const _wikimediaPagePause = Duration(seconds: 5);
+const _wikimediaRateLimitPause = Duration(minutes: 5);
+// Narrower or wider than this and the screen would crop away too much of the photo.
+const _wikimediaMinRatio = 1.3;
+const _wikimediaMaxRatio = 2.1;
 
 // Reddit answers 429 to a second feed request straight after the first, so pages are far apart.
 const _pagePause = Duration(minutes: 3);
@@ -43,8 +63,10 @@ final _titlePattern = RegExp(r"<title>(.*?)</title>", dotAll: true);
 final _imagePattern = RegExp(r"https://i\.redd\.it/[A-Za-z0-9_-]+\.(?:jpe?g|png)");
 final _sizePattern = RegExp(r"(\d{3,5})\s*(?:x|X|×|&#215;)\s*(\d{3,5})");
 
-/// The Scenic theme's backgrounds: downloads [targetCount] photos from r/EarthPorn once, then
-/// never touches the network again. Survives restarts by remembering its place in the feed.
+/// The Scenic theme's backgrounds: downloads [targetCount] photos from r/EarthPorn and the
+/// featured photos on Wikimedia Commons once, then never touches the network again. The two run
+/// side by side, so Reddit's rate limits don't hold up Wikimedia. Survives restarts by remembering
+/// its place in each.
 class PhotoService extends ChangeNotifier
 {
   static const targetCount = 1000;
@@ -57,14 +79,18 @@ class PhotoService extends ChangeNotifier
   final List<File> _photos = [];
   late Directory _directory;
   late File _stateFile;
+  late File _wikimediaStateFile;
 
   String? _after;
   bool _complete = false;
+  int _wikimediaCategory = 0;
+  Map<String, String>? _wikimediaContinue;
+  bool _wikimediaComplete = false;
   bool _started = false;
 
   List<File> get photos => List.unmodifiable(_photos);
 
-  bool get complete => _complete;
+  bool get complete => _complete && _wikimediaComplete;
 
   int get redditPhotoCount => _photos.where(_isRedditPhoto).length;
 
@@ -81,14 +107,17 @@ class PhotoService extends ChangeNotifier
     _directory = Directory("${support.path}/photos");
     await _directory.create(recursive: true);
     _stateFile = File("${_directory.path}/state.json");
+    _wikimediaStateFile = File("${_directory.path}/wikimedia.json");
 
     await _loadState();
+    await _loadWikimediaState();
     await _loadPhotos();
     notifyListeners();
 
-    if (!_complete) {
-      await _download();
-    }
+    await Future.wait([
+      if (!_complete) _download(),
+      if (!_wikimediaComplete) _downloadWikimedia(),
+    ]);
   }
 
   Future<void> _loadState() async {
@@ -109,6 +138,27 @@ class PhotoService extends ChangeNotifier
 
   Future<void> _saveState() =>
       _stateFile.writeAsString(jsonEncode({"after": _after, "complete": _complete, "target": targetCount}));
+
+  Future<void> _loadWikimediaState() async {
+    if (await _wikimediaStateFile.exists()) {
+      try {
+        final Map<String, dynamic> state = jsonDecode(await _wikimediaStateFile.readAsString());
+        final Map<String, dynamic>? next = state["continue"];
+        _wikimediaCategory = state["category"] ?? 0;
+        _wikimediaContinue = next == null ? null : Map<String, String>.from(next);
+        _wikimediaComplete = state["complete"] ?? false;
+      }
+      on FormatException {
+        await _wikimediaStateFile.delete();
+      }
+    }
+  }
+
+  Future<void> _saveWikimediaState() => _wikimediaStateFile.writeAsString(jsonEncode({
+    "category": _wikimediaCategory,
+    "continue": _wikimediaContinue,
+    "complete": _wikimediaComplete,
+  }));
 
   Future<void> _loadPhotos() async {
     final files = await _directory.list().where((entity) => entity is File && entity.path.endsWith(".jpg")).toList();
@@ -178,15 +228,136 @@ class PhotoService extends ChangeNotifier
   Future<void> _finish() async {
     _complete = true;
     await _saveState();
+    await _removeBingPhotos();
+    notifyListeners();
+  }
 
-    // Bing's photos only fill in until the real ones arrive.
-    if (redditPhotoCount > 0) {
-      for (final photo in _photos.where((photo) => !_isRedditPhoto(photo)).toList()) {
-        await photo.delete();
-        _photos.remove(photo);
+  /// Bing's photos only fill in until the real ones arrive.
+  Future<void> _removeBingPhotos() async {
+    final bingPhotos = _photos.where((photo) => photo.uri.pathSegments.last.startsWith("b_")).toList();
+    if (bingPhotos.length == _photos.length) {
+      return;
+    }
+    for (final photo in bingPhotos) {
+      await photo.delete();
+      _photos.remove(photo);
+    }
+  }
+
+  Future<void> _downloadWikimedia() async {
+    while (_wikimediaCategory < _wikimediaCategories.length) {
+      final _WikimediaPage page;
+      try {
+        page = await _fetchWikimediaPage();
+      }
+      on _RateLimited catch (limited) {
+        await Future.delayed(limited.retryAfter ?? _wikimediaRateLimitPause);
+        continue;
+      }
+      on Exception catch (error) {
+        debugPrint("Wikimedia failed: $error");
+        await _fetchBingIfEmpty();
+        await Future.delayed(_failurePause);
+        continue;
+      }
+
+      for (final file in page.files) {
+        await _downloadWikimediaFile(file);
+      }
+
+      if (page.next == null) {
+        _wikimediaCategory++;
+      }
+      _wikimediaContinue = page.next;
+      await _saveWikimediaState();
+      await Future.delayed(_wikimediaPagePause);
+    }
+
+    _wikimediaComplete = true;
+    await _saveWikimediaState();
+    await _removeBingPhotos();
+    notifyListeners();
+  }
+
+  Future<_WikimediaPage> _fetchWikimediaPage() async {
+    final request = await _client.getUrl(Uri.https("commons.wikimedia.org", "/w/api.php", {
+      "action": "query",
+      "format": "json",
+      "generator": "categorymembers",
+      "gcmtitle": "Category:Featured pictures of ${_wikimediaCategories[_wikimediaCategory]}",
+      "gcmtype": "file",
+      "gcmlimit": _wikimediaPageSize,
+      "prop": "imageinfo",
+      "iiprop": "url|size|mime",
+      "iiurlwidth": "1920",
+      ...?_wikimediaContinue,
+    }));
+    final response = await request.close();
+
+    if (response.statusCode == HttpStatus.tooManyRequests) {
+      throw await _rateLimited(response);
+    }
+    if (response.statusCode != HttpStatus.ok) {
+      await response.drain<void>();
+      throw HttpException("Wikimedia returned ${response.statusCode}");
+    }
+
+    final Map<String, dynamic> body = jsonDecode(await response.transform(utf8.decoder).join());
+    // Errors come back as a normal response, and would otherwise look like an empty category.
+    if (body["error"] != null) {
+      throw HttpException("Wikimedia error: ${body["error"]["code"]}");
+    }
+
+    final Map<String, dynamic> pages = body["query"]?["pages"] ?? {};
+    final files = <_Post>[];
+    for (final page in pages.values) {
+      final List<dynamic>? info = page["imageinfo"];
+      if (info != null && info.isNotEmpty && _wikimediaImageFits(info.first)) {
+        files.add(_Post("${page["pageid"]}", info.first["thumburl"] ?? info.first["url"]));
       }
     }
-    notifyListeners();
+
+    final Map<String, dynamic>? next = body["continue"];
+    return _WikimediaPage(files, next?.map((key, value) => MapEntry(key, "$value")));
+  }
+
+  bool _wikimediaImageFits(Map<String, dynamic> image) {
+    final num width = image["width"];
+    final num height = image["height"];
+    return image["mime"] == "image/jpeg" &&
+        width >= _minWidth &&
+        height >= _minHeight &&
+        width / height >= _wikimediaMinRatio &&
+        width / height <= _wikimediaMaxRatio;
+  }
+
+  Future<void> _downloadWikimediaFile(_Post file) async {
+    final target = File("${_directory.path}/w_${file.id}.jpg");
+    if (await target.exists()) {
+      return;
+    }
+
+    while (true) {
+      try {
+        await _savePhoto(file.imageUrl, target, "w_${file.id}");
+        break;
+      }
+      on _RateLimited catch (limited) {
+        // Moving on would lose this photo for good, since its page won't be fetched again.
+        await Future.delayed(limited.retryAfter ?? _wikimediaRateLimitPause);
+      }
+      on Exception catch (error) {
+        debugPrint("Photo ${file.id} failed: $error");
+        break;
+      }
+    }
+    await Future.delayed(_imagePause);
+  }
+
+  Future<_RateLimited> _rateLimited(HttpClientResponse response) async {
+    final retryAfter = int.tryParse(response.headers.value(HttpHeaders.retryAfterHeader) ?? response.headers.value("x-ratelimit-reset") ?? "");
+    await response.drain<void>();
+    return _RateLimited(retryAfter == null ? null : Duration(seconds: retryAfter));
   }
 
   Future<_FeedPage> _fetchFeedPage() async {
@@ -195,9 +366,7 @@ class PhotoService extends ChangeNotifier
     final response = await request.close();
 
     if (response.statusCode == HttpStatus.tooManyRequests) {
-      final retryAfter = int.tryParse(response.headers.value(HttpHeaders.retryAfterHeader) ?? response.headers.value("x-ratelimit-reset") ?? "");
-      await response.drain<void>();
-      throw _RateLimited(retryAfter == null ? null : Duration(seconds: retryAfter));
+      throw await _rateLimited(response);
     }
     if (response.statusCode != HttpStatus.ok) {
       await response.drain<void>();
@@ -245,28 +414,37 @@ class PhotoService extends ChangeNotifier
       return;
     }
 
-    final temporary = File("${_directory.path}/${post.id}.tmp");
     try {
-      if (await _downloadTo(post.imageUrl, temporary) &&
-          await _channel.resizePhoto(temporary.path, target.path, _minWidth, _minHeight)) {
-        _addPhoto(target);
-      }
+      await _savePhoto(post.imageUrl, target, post.id);
     }
     on Exception catch (error) {
       debugPrint("Photo ${post.id} failed: $error");
+    }
+    await Future.delayed(_imagePause);
+  }
+
+  Future<void> _savePhoto(String url, File target, String temporaryName) async {
+    final temporary = File("${_directory.path}/$temporaryName.tmp");
+    try {
+      if (await _downloadTo(url, temporary) &&
+          await _channel.resizePhoto(temporary.path, target.path, _minWidth, _minHeight)) {
+        _addPhoto(target);
+      }
     }
     finally {
       if (await temporary.exists()) {
         await temporary.delete();
       }
     }
-    await Future.delayed(_imagePause);
   }
 
   Future<bool> _downloadTo(String url, File file) async {
     final request = await _client.getUrl(Uri.parse(url));
     final response = await request.close();
 
+    if (response.statusCode == HttpStatus.tooManyRequests) {
+      throw await _rateLimited(response);
+    }
     if (response.statusCode != HttpStatus.ok || response.contentLength > _maxImageBytes) {
       await response.drain<void>();
       return false;
@@ -326,6 +504,14 @@ class _FeedPage
   final String? lastPostId;
 
   _FeedPage(this.posts, this.lastPostId);
+}
+
+class _WikimediaPage
+{
+  final List<_Post> files;
+  final Map<String, String>? next;
+
+  _WikimediaPage(this.files, this.next);
 }
 
 class _RateLimited implements Exception
