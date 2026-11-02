@@ -186,12 +186,17 @@ class _ScenicHomeState extends State<ScenicHome>
                     left: 28,
                     right: 28,
                     child: Row(
+                      // Even gaps either side of the weather, whatever its width.
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const _Clock(),
-                        const SizedBox(width: 16),
-                        // Takes the leftover width, so a long place name shortens instead of overflowing.
-                        const Expanded(child: Align(alignment: Alignment.centerRight, child: WeatherPanel())),
-                        const SizedBox(width: 12),
+                        // Flexible so a long place name shortens instead of overflowing.
+                        const Flexible(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: WeatherPanel(),
+                          ),
+                        ),
                         ExcludeFocus(excluding: state.startMenuOpen, child: _topButtons(context)),
                       ],
                     ),
