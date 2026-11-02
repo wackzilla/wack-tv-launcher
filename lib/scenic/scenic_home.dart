@@ -43,14 +43,10 @@ const _rowItemSpacing = 4.0;
 const _itemsPerRow = 8;
 const _rowsMaxHeight = 188.0;
 
-const _infoBoxInset = 110.0;
-const _clockTop = 160.0;
+const _nextPhotoTop = 204.0;
 // Clear of the dock once the app rows have pushed it up.
-const _clockTopRaised = 62.0;
-const _weatherOffset = 8.0;
-const _infoBoxMove = Duration(milliseconds: 220);
-// Lines the next photo button up with the middle of the weather box.
-const _nextPhotoOffset = 44.0;
+const _nextPhotoTopRaised = 106.0;
+const _nextPhotoMove = Duration(milliseconds: 220);
 
 const _clockShadow = [Shadow(color: Color(0x99000000), offset: Offset(0, 2), blurRadius: 12)];
 
@@ -136,8 +132,8 @@ class _ScenicHomeState extends State<ScenicHome>
   FocusNode _nodeFor(String packageName) =>
       _focusNodes.putIfAbsent(packageName, () => FocusNode(debugLabel: packageName));
 
-  // With nothing pinned the rows are always open, so the boxes stay up out of their way.
-  bool get _infoBoxesRaised => _rowsOpen || (_firstDockPackage == null && _firstRowPackage != null);
+  // With nothing pinned the rows are always open, so the button stays up out of their way.
+  bool get _nextPhotoRaised => _rowsOpen || (_firstDockPackage == null && _firstRowPackage != null);
 
   void _openRows() {
     setState(() => _rowsOpen = true);
@@ -179,30 +175,26 @@ class _ScenicHomeState extends State<ScenicHome>
                 fit: StackFit.expand,
                 children: [
                   AnimatedPositioned(
-                    duration: _infoBoxMove,
+                    duration: _nextPhotoMove,
                     curve: Curves.easeOut,
                     right: 12,
-                    top: (_infoBoxesRaised ? _clockTopRaised : _clockTop) + _nextPhotoOffset,
+                    top: _nextPhotoRaised ? _nextPhotoTopRaised : _nextPhotoTop,
                     child: ExcludeFocus(excluding: state.startMenuOpen, child: _nextPhotoButton()),
                   ),
-                  AnimatedPositioned(
-                    duration: _infoBoxMove,
-                    curve: Curves.easeOut,
-                    left: _infoBoxInset,
-                    top: _infoBoxesRaised ? _clockTopRaised : _clockTop,
-                    child: const _Clock(),
-                  ),
-                  AnimatedPositioned(
-                    duration: _infoBoxMove,
-                    curve: Curves.easeOut,
-                    right: _infoBoxInset,
-                    top: (_infoBoxesRaised ? _clockTopRaised : _clockTop) + _weatherOffset,
-                    child: const WeatherPanel(),
-                  ),
                   Positioned(
-                    top: 20,
+                    top: 14,
+                    left: 28,
                     right: 28,
-                    child: ExcludeFocus(excluding: state.startMenuOpen, child: _topButtons(context)),
+                    child: Row(
+                      children: [
+                        const _Clock(),
+                        const SizedBox(width: 16),
+                        // Takes the leftover width, so a long place name shortens instead of overflowing.
+                        const Expanded(child: Align(alignment: Alignment.centerRight, child: WeatherPanel())),
+                        const SizedBox(width: 12),
+                        ExcludeFocus(excluding: state.startMenuOpen, child: _topButtons(context)),
+                      ],
+                    ),
                   ),
                   Positioned(
                     left: 0,
@@ -482,24 +474,28 @@ class _Clock extends StatelessWidget
   @override
   Widget build(BuildContext context) => Selector<SettingsService, ({String timeFormat, bool showTime, bool showDate})>(
     selector: (_, settings) => (
-      // The big clock leaves off AM/PM, but keeps the 12 or 24 hour choice.
+      // The clock leaves off AM/PM, but keeps the 12 or 24 hour choice.
       timeFormat: settings.timeFormat.replaceAll(RegExp(r"\s*a"), ""),
       showTime: settings.showTimeInStatusBar,
       showDate: settings.showDateInStatusBar,
     ),
     builder: (_, clock, __) => !clock.showDate && !clock.showTime ? const SizedBox.shrink() : ScenicDarkBox(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
         children: [
-          if (clock.showDate)
-            const DateTimeWidget("EEEE, MMMM d",
-              updateInterval: Duration(minutes: 1),
-              textStyle: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w400, shadows: _clockShadow),
-            ),
           if (clock.showTime)
             DateTimeWidget(clock.timeFormat,
               key: ValueKey("scenic time ${clock.timeFormat}"),
-              textStyle: const TextStyle(color: Colors.white, fontSize: 79, height: 1.1, fontWeight: FontWeight.w300, shadows: _clockShadow),
+              textStyle: const TextStyle(color: Colors.white, fontSize: 28, height: 1.1, fontWeight: FontWeight.w300, shadows: _clockShadow),
+            ),
+          if (clock.showTime && clock.showDate)
+            const SizedBox(width: 12),
+          if (clock.showDate)
+            const DateTimeWidget("EEEE, MMMM d",
+              updateInterval: Duration(minutes: 1),
+              textStyle: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w400, shadows: _clockShadow),
             ),
         ],
       ),

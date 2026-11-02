@@ -84,7 +84,7 @@ class ScenicDarkBox extends StatelessWidget
     child: BackdropFilter(
       filter: ui.ImageFilter.blur(sigmaX: ScenicColors.darkGlassBlur, sigmaY: ScenicColors.darkGlassBlur),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 19, vertical: 13),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
         decoration: BoxDecoration(
           color: ScenicColors.darkGlass,
           borderRadius: BorderRadius.circular(19),

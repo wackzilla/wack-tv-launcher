@@ -288,25 +288,24 @@ class _ForecastState extends State<_Forecast>
     }
 
     return ScenicDarkBox(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(weather.icon, color: Colors.white, size: 39, shadows: _shadow),
-              const SizedBox(width: 9),
-              Text("${weather.temperature}°",
-                style: const TextStyle(color: Colors.white, fontSize: 49, height: 1.1, fontWeight: FontWeight.w300, shadows: _shadow),
-              ),
-            ],
+          Icon(weather.icon, color: Colors.white, size: 24, shadows: _shadow),
+          const SizedBox(width: 7),
+          Text("${weather.temperature}°",
+            style: const TextStyle(color: Colors.white, fontSize: 28, height: 1.1, fontWeight: FontWeight.w300, shadows: _shadow),
           ),
-          Text(weather.condition,
-            style: const TextStyle(color: Colors.white, fontSize: 16, shadows: _shadow),
-          ),
-          const SizedBox(height: 2),
-          Text("H ${weather.high}°  L ${weather.low}°  ·  ${widget.location.name}",
-            style: const TextStyle(color: Colors.white, fontSize: 13, shadows: _shadow),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              [weather.condition, "H ${weather.high}°  L ${weather.low}°", widget.location.name]
+                  .where((part) => part.isNotEmpty)
+                  .join("  ·  "),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white, fontSize: 14, shadows: _shadow),
+            ),
           ),
         ],
       ),
