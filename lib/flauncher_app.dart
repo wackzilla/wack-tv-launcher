@@ -17,6 +17,7 @@
  */
 
 import 'package:flauncher/actions.dart';
+import 'package:flauncher/launcher_theme.dart';
 import 'package:flauncher/providers/apps_service.dart';
 import 'package:flauncher/providers/launcher_state.dart';
 import 'package:flauncher/providers/settings_service.dart';
@@ -71,7 +72,10 @@ class FLauncherApp extends StatelessWidget
     AppsService appsService = context.read<AppsService>();
     LauncherState launcherState = context.read<LauncherState>();
     launcherState.refresh(appsService);
-    final MaterialColor swatch = context.select<SettingsService, bool>((settings) => settings.scenicTheme) ? _scenicSwatch : _swatch;
+    final MaterialColor swatch = switch (context.select<SettingsService, LauncherTheme>((settings) => settings.launcherTheme)) {
+      LauncherTheme.xp => _swatch,
+      LauncherTheme.scenic => _scenicSwatch,
+    };
 
     return MaterialApp(
       navigatorKey: launcherState.navigatorKey,

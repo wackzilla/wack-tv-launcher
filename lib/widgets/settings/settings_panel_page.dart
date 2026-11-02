@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import 'package:flauncher/launcher_theme.dart';
 import 'package:flauncher/providers/apps_service.dart';
 import 'package:flauncher/providers/photo_service.dart';
 import 'package:flauncher/providers/settings_service.dart';
@@ -25,6 +26,7 @@ import 'package:flauncher/widgets/settings/launcher_sections_panel_page.dart';
 import 'package:flauncher/widgets/settings/date_time_format_dialog.dart';
 import 'package:flauncher/widgets/settings/flauncher_about_dialog.dart';
 import 'package:flauncher/widgets/settings/status_bar_panel_page.dart';
+import 'package:flauncher/widgets/settings/theme_panel_page.dart';
 import 'package:flauncher/widgets/settings/wallpaper_panel_page.dart';
 import 'package:flauncher/xp/xp_dialogs.dart';
 import 'package:flutter/material.dart';
@@ -76,14 +78,20 @@ class SettingsPanelPage extends StatelessWidget {
                     ),
                     onPressed: () => Navigator.of(context).pushNamed(LauncherSectionsPanelPage.routeName),
                   ),
-                  RoundedSwitchListTile(
-                    value: settingsService.scenicTheme,
-                    onChanged: (value) => settingsService.setScenicTheme(value),
-                    title: Text("Scenic theme", style: Theme.of(context).textTheme.bodyMedium),
-                    secondary: const Icon(Icons.landscape_outlined),
+                  TextButton(
+                    child: Row(
+                      children: [
+                        const Icon(Icons.palette_outlined),
+                        Container(width: 8),
+                        Flexible(
+                          child: Text("Theme: ${settingsService.launcherTheme.label}", style: Theme.of(context).textTheme.bodyMedium),
+                        ),
+                      ],
+                    ),
+                    onPressed: () => Navigator.of(context).pushNamed(ThemePanelPage.routeName),
                   ),
                   // The Scenic theme's background is its photos, not the chosen wallpaper.
-                  if (settingsService.scenicTheme)
+                  if (settingsService.launcherTheme == LauncherTheme.scenic)
                     Consumer<PhotoService>(
                       builder: (context, photoService, _) => Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

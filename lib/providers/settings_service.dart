@@ -18,6 +18,7 @@
 
 import 'dart:async';
 
+import 'package:flauncher/launcher_theme.dart';
 import 'package:flauncher/widgets/settings/back_button_actions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -40,7 +41,9 @@ const _startMenuPinned = "start_menu_pinned";
 const _taskbarPinned = "taskbar_pinned";
 const _recentApps = "recent_apps";
 const _userName = "user_name";
-const _scenicTheme = "scenic_theme";
+const _launcherTheme = "launcher_theme";
+// The old on/off switch. Only read on TVs that haven't saved a launcher_theme yet.
+const _legacyScenicTheme = "scenic_theme";
 const _weatherLatitude = "weather_latitude";
 const _weatherLongitude = "weather_longitude";
 const _weatherPlace = "weather_place";
@@ -88,7 +91,13 @@ class SettingsService extends ChangeNotifier {
 
   String get userName => _sharedPreferences.getString(_userName) ?? "Wack";
 
-  bool get scenicTheme => _sharedPreferences.getBool(_scenicTheme) ?? false;
+  LauncherTheme get launcherTheme {
+    final saved = _sharedPreferences.getString(_launcherTheme);
+    if (saved == null) {
+      return _sharedPreferences.getBool(_legacyScenicTheme) == true ? LauncherTheme.scenic : LauncherTheme.xp;
+    }
+    return LauncherTheme.values.asNameMap()[saved] ?? LauncherTheme.xp;
+  }
 
   /// Null until it's set on this TV. Only ever stored on the TV.
   WeatherLocation? get weatherLocation {
@@ -112,8 +121,9 @@ class SettingsService extends ChangeNotifier {
     return set(_guardStockLauncher, value);
   }
 
-  Future<void> setScenicTheme(bool value) async {
-    return set(_scenicTheme, value);
+  Future<void> setLauncherTheme(LauncherTheme theme) async {
+    await _sharedPreferences.setString(_launcherTheme, theme.name);
+    notifyListeners();
   }
 
   Future<void> setWeatherLocation(WeatherLocation location) async {

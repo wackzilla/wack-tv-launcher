@@ -17,6 +17,7 @@
 
 import 'dart:ui' as ui;
 
+import 'package:flauncher/launcher_theme.dart';
 import 'package:flauncher/providers/settings_service.dart';
 import 'package:flauncher/widgets/focus_keyboard_listener.dart';
 import 'package:flutter/material.dart';
@@ -97,7 +98,7 @@ class ScenicDarkBox extends StatelessWidget
 }
 
 /// Whether the Scenic theme is on. Call it from a build method, so the widget follows the setting.
-bool scenicThemeOf(BuildContext context) => context.select<SettingsService, bool>((settings) => settings.scenicTheme);
+bool scenicThemeOf(BuildContext context) => context.select<SettingsService, bool>((settings) => settings.launcherTheme == LauncherTheme.scenic);
 
 const xpTextShadow = [Shadow(color: Color(0xCC000000), offset: Offset(1, 1), blurRadius: 2)];
 

@@ -18,6 +18,7 @@
 
 //import 'dart:html';
 
+import 'package:flauncher/launcher_theme.dart';
 import 'package:flauncher/providers/settings_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -34,6 +35,32 @@ void main() async {
     await sharedPreferences.clear();
   });
 
+
+  group("launcherTheme", () {
+    test("defaults to XP", () {
+      expect(settingsService.launcherTheme, LauncherTheme.xp);
+    });
+
+    test("carries over the old Scenic switch", () async {
+      await sharedPreferences.setBool("scenic_theme", true);
+
+      expect(settingsService.launcherTheme, LauncherTheme.scenic);
+    });
+
+    test("a chosen theme wins over the old switch", () async {
+      await sharedPreferences.setBool("scenic_theme", true);
+
+      await settingsService.setLauncherTheme(LauncherTheme.xp);
+
+      expect(settingsService.launcherTheme, LauncherTheme.xp);
+    });
+
+    test("an unknown saved theme falls back to XP", () async {
+      await sharedPreferences.setString("launcher_theme", "gone");
+
+      expect(settingsService.launcherTheme, LauncherTheme.xp);
+    });
+  });
 
   test("setUse24HourTimeFormat", () async {
     final sharedPreferences = await SharedPreferences.getInstance();

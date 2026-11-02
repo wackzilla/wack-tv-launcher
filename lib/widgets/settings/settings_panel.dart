@@ -23,6 +23,7 @@ import 'package:flauncher/widgets/settings/gradient_panel_page.dart';
 import 'package:flauncher/widgets/settings/launcher_section_panel_page.dart';
 import 'package:flauncher/widgets/settings/settings_panel_page.dart';
 import 'package:flauncher/widgets/settings/status_bar_panel_page.dart';
+import 'package:flauncher/widgets/settings/theme_panel_page.dart';
 import 'package:flauncher/widgets/settings/wallpaper_panel_page.dart';
 import 'package:flutter/material.dart';
 
@@ -52,6 +53,8 @@ class _SettingsPanelState extends State<SettingsPanel> {
             switch (settings.name) {
               case SettingsPanelPage.routeName:
                 return MaterialPageRoute(builder: (_) => SettingsPanelPage());
+              case ThemePanelPage.routeName:
+                return MaterialPageRoute(builder: (_) => ThemePanelPage());
               case WallpaperPanelPage.routeName:
                 return MaterialPageRoute(builder: (_) => WallpaperPanelPage());
               case StatusBarPanelPage.routeName:

@@ -17,7 +17,7 @@ Not affiliated with Microsoft. The wallpaper and logo are original drawings in t
 
 ## Scenic theme
 
-Turn on **Scenic theme** in Launcher Settings for a modern look with the same features:
+Pick **Scenic** under **Theme** in Launcher Settings for a modern look with the same features:
 
 - **Background:** photos from [r/EarthPorn](https://www.reddit.com/r/EarthPorn/) and the [featured pictures on Wikimedia Commons](https://commons.wikimedia.org/wiki/Commons:Featured_pictures) that crossfade every 2 minutes, on every press of Home, and when you press the **>** button on the right. The TV downloads up to 1000 photos from Reddit and all the fitting Wikimedia landscape photos once, resized to 1080p and kept in the app's private storage (allow about 2 GB), then never fetches any more. It goes slowly to respect rate limits, carries on after a restart, and shows Bing's daily photos if neither can be reached at first.
 - **Dock:** only your pinned apps. Hold OK on an app and choose **Pin to Dock**.

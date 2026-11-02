@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import 'package:flauncher/launcher_theme.dart';
 import 'package:flauncher/models/app.dart';
 import 'package:flauncher/providers/apps_service.dart';
 import 'package:flauncher/providers/launcher_state.dart';
@@ -104,9 +105,12 @@ class _FLauncherState extends State<FLauncher> {
       });
 
   @override
-  Widget build(BuildContext context) => context.select<SettingsService, bool>((settings) => settings.scenicTheme)
-    ? const ScenicHome()
-    : Focus(
+  Widget build(BuildContext context) => switch (context.select<SettingsService, LauncherTheme>((settings) => settings.launcherTheme)) {
+    LauncherTheme.xp => _xpDesktop(),
+    LauncherTheme.scenic => const ScenicHome(),
+  };
+
+  Widget _xpDesktop() => Focus(
     canRequestFocus: false,
     skipTraversal: true,
     onKeyEvent: (_, event) {
