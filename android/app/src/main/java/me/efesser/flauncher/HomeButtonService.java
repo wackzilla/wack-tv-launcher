@@ -22,6 +22,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
 
@@ -48,6 +49,8 @@ public class HomeButtonService extends AccessibilityService
             "com.amazon.tv.launcher"
     };
 
+    private static final String TAG = "WackHome";
+
     private static HomeButtonService instance;
 
     static HomeButtonService getInstance() {
@@ -61,6 +64,7 @@ public class HomeButtonService extends AccessibilityService
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
+        Log.i(TAG, "service connected, flags=" + getServiceInfo().flags + " caps=" + getServiceInfo().getCapabilities());
         instance = this;
     }
 
@@ -78,6 +82,7 @@ public class HomeButtonService extends AccessibilityService
 
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
+        Log.i(TAG, "key code=" + event.getKeyCode() + " action=" + event.getAction() + " scan=" + event.getScanCode() + " device=" + event.getDeviceId());
         if (event.getKeyCode() == KeyEvent.KEYCODE_HOME
                 && flutterPreferences(this).getBoolean(OVERRIDE_HOME_KEY, true)) {
             if (event.getAction() == KeyEvent.ACTION_UP) {
@@ -90,6 +95,7 @@ public class HomeButtonService extends AccessibilityService
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
+        Log.i(TAG, "event type=" + event.getEventType() + " package=" + event.getPackageName() + " class=" + event.getClassName() + " age=" + (android.os.SystemClock.uptimeMillis() - event.getEventTime()) + "ms");
         if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             return;
         }
@@ -121,11 +127,15 @@ public class HomeButtonService extends AccessibilityService
     }
 
     private void goHome() {
+        Log.i(TAG, "goHome called");
         Intent intent = new Intent(this, MainActivity.class)
                 .setAction(MainActivity.ACTION_HOME_PRESSED)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         try {
             startActivity(intent);
-        } catch (Exception ignored) { }
+            Log.i(TAG, "goHome startActivity returned");
+        } catch (Exception e) {
+            Log.e(TAG, "goHome failed", e);
+        }
     }
 }
