@@ -37,14 +37,20 @@ void main() async {
 
 
   group("launcherTheme", () {
-    test("defaults to XP", () {
-      expect(settingsService.launcherTheme, LauncherTheme.xp);
+    test("defaults to Scenic", () {
+      expect(settingsService.launcherTheme, LauncherTheme.scenic);
     });
 
-    test("carries over the old Scenic switch", () async {
+    test("carries over the old Scenic switch when on", () async {
       await sharedPreferences.setBool("scenic_theme", true);
 
       expect(settingsService.launcherTheme, LauncherTheme.scenic);
+    });
+
+    test("carries over the old Scenic switch when off", () async {
+      await sharedPreferences.setBool("scenic_theme", false);
+
+      expect(settingsService.launcherTheme, LauncherTheme.xp);
     });
 
     test("a chosen theme wins over the old switch", () async {
@@ -55,10 +61,10 @@ void main() async {
       expect(settingsService.launcherTheme, LauncherTheme.xp);
     });
 
-    test("an unknown saved theme falls back to XP", () async {
+    test("an unknown saved theme falls back to the default", () async {
       await sharedPreferences.setString("launcher_theme", "gone");
 
-      expect(settingsService.launcherTheme, LauncherTheme.xp);
+      expect(settingsService.launcherTheme, LauncherTheme.defaultTheme);
     });
   });
 

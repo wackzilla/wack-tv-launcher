@@ -105,6 +105,7 @@ public class MainActivity extends FlutterActivity
                 case "openLiveTv" -> result.success(openLiveTv());
                 case "hasLiveTv" -> result.success(hasLiveTv());
                 case "isHomeServiceEnabled" -> result.success(isHomeServiceEnabled());
+                case "getFreeSpace" -> result.success(getFilesDir().getUsableSpace());
                 case "standBy" -> result.success(standBy());
                 case "showPowerDialog" -> result.success(showPowerDialog());
                 case "resizePhoto" -> resizePhoto(call.argument("source"), call.argument("target"), call.argument("minWidth"), call.argument("minHeight"), result);

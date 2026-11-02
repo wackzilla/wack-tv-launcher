@@ -10,6 +10,9 @@ enum LauncherTheme {
   xp("Windows XP", Icons.desktop_windows_outlined),
   scenic("Scenic", Icons.landscape_outlined);
 
+  /// Used until a theme is picked on the TV.
+  static const defaultTheme = scenic;
+
   final String label;
   final IconData icon;
 

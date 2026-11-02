@@ -53,6 +53,8 @@ const _imagePause = Duration(seconds: 2);
 const _failurePause = Duration(minutes: 30);
 const _maxRateLimitPause = Duration(hours: 1);
 const _maxImageBytes = 40 * 1024 * 1024;
+// Photos stop here, so they can't crowd out apps on a device with little storage.
+const _minFreeBytes = 1024 * 1024 * 1024;
 
 const _minWidth = 1600;
 const _minHeight = 900;
@@ -66,7 +68,7 @@ final _sizePattern = RegExp(r"(\d{3,5})\s*(?:x|X|×|&#215;)\s*(\d{3,5})");
 /// The Scenic theme's backgrounds: downloads [targetCount] photos from r/EarthPorn and the
 /// featured photos on Wikimedia Commons once, then never touches the network again. The two run
 /// side by side, so Reddit's rate limits don't hold up Wikimedia. Survives restarts by remembering
-/// its place in each.
+/// its place in each. Stops early if storage runs low, and tries again on the next start.
 class PhotoService extends ChangeNotifier
 {
   static const targetCount = 1000;
@@ -87,10 +89,14 @@ class PhotoService extends ChangeNotifier
   Map<String, String>? _wikimediaContinue;
   bool _wikimediaComplete = false;
   bool _started = false;
+  bool _storageFull = false;
 
   List<File> get photos => List.unmodifiable(_photos);
 
   bool get complete => _complete && _wikimediaComplete;
+
+  /// Downloading stopped to leave [_minFreeBytes] free.
+  bool get storageFull => _storageFull;
 
   int get redditPhotoCount => _photos.where(_isRedditPhoto).length;
 
@@ -169,10 +175,35 @@ class PhotoService extends ChangeNotifier
 
   bool _isRedditPhoto(File file) => file.uri.pathSegments.last.startsWith("r_");
 
+  /// False once storage is low. Callers return without saving, so they pick up from the same
+  /// place on the next start if there's room by then.
+  Future<bool> _hasRoom() async {
+    if (_storageFull) {
+      return false;
+    }
+    try {
+      if (await _channel.getFreeSpace() >= _minFreeBytes) {
+        return true;
+      }
+    }
+    on Exception catch (error) {
+      debugPrint("Free space check failed: $error");
+      return true;
+    }
+    _storageFull = true;
+    notifyListeners();
+    await _fetchBingIfEmpty();
+    return false;
+  }
+
   Future<void> _download() async {
     Duration rateLimitPause = _pagePause;
 
     while (redditPhotoCount < targetCount) {
+      if (!await _hasRoom()) {
+        return;
+      }
+
       final _FeedPage page;
       try {
         page = await _fetchFeedPage();
@@ -201,6 +232,9 @@ class PhotoService extends ChangeNotifier
       for (final post in page.posts) {
         if (redditPhotoCount >= targetCount) {
           break;
+        }
+        if (!await _hasRoom()) {
+          return;
         }
         await _downloadPost(post);
       }
@@ -246,6 +280,10 @@ class PhotoService extends ChangeNotifier
 
   Future<void> _downloadWikimedia() async {
     while (_wikimediaCategory < _wikimediaCategories.length) {
+      if (!await _hasRoom()) {
+        return;
+      }
+
       final _WikimediaPage page;
       try {
         page = await _fetchWikimediaPage();
@@ -262,6 +300,9 @@ class PhotoService extends ChangeNotifier
       }
 
       for (final file in page.files) {
+        if (!await _hasRoom()) {
+          return;
+        }
         await _downloadWikimediaFile(file);
       }
 

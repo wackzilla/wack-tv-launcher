@@ -103,7 +103,9 @@ class SettingsPanelPage extends StatelessWidget {
                               child: Text(
                                 photoService.complete
                                     ? "${photoService.photos.length} photos downloaded"
-                                    : "Downloading photos: ${photoService.photos.length} so far",
+                                    : photoService.storageFull
+                                        ? "Storage is low, stopped at ${photoService.photos.length} photos"
+                                        : "Downloading photos: ${photoService.photos.length} so far",
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ),

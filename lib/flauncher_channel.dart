@@ -82,6 +82,9 @@ class FLauncherChannel {
 
   Future<bool> showPowerDialog() async => await _methodChannel.invokeMethod("showPowerDialog");
 
+  /// Bytes free in the storage that holds the app's files.
+  Future<int> getFreeSpace() async => await _methodChannel.invokeMethod("getFreeSpace");
+
   /// Saves [source] to [target] as a TV-sized JPEG. False if it's not a landscape photo of at
   /// least [minWidth] by [minHeight], or it can't be read.
   Future<bool> resizePhoto(String source, String target, int minWidth, int minHeight) async =>

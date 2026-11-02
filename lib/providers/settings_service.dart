@@ -94,9 +94,13 @@ class SettingsService extends ChangeNotifier {
   LauncherTheme get launcherTheme {
     final saved = _sharedPreferences.getString(_launcherTheme);
     if (saved == null) {
-      return _sharedPreferences.getBool(_legacyScenicTheme) == true ? LauncherTheme.scenic : LauncherTheme.xp;
+      return switch (_sharedPreferences.getBool(_legacyScenicTheme)) {
+        true => LauncherTheme.scenic,
+        false => LauncherTheme.xp,
+        null => LauncherTheme.defaultTheme,
+      };
     }
-    return LauncherTheme.values.asNameMap()[saved] ?? LauncherTheme.xp;
+    return LauncherTheme.values.asNameMap()[saved] ?? LauncherTheme.defaultTheme;
   }
 
   /// Null until it's set on this TV. Only ever stored on the TV.
