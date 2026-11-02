@@ -87,23 +87,89 @@ class _WeatherLocationDialog extends StatefulWidget
   State<_WeatherLocationDialog> createState() => _WeatherLocationDialogState();
 }
 
+/// Uses its own number pad rather than a text box. On some TVs the arrow keys never reach the
+/// system keyboard, which leaves the remote stuck on one key.
 class _WeatherLocationDialogState extends State<_WeatherLocationDialog>
 {
-  final TextEditingController _zip = TextEditingController();
+  static const _zipLength = 5;
+  static final _digitKeys = {
+    LogicalKeyboardKey.digit0: "0",
+    LogicalKeyboardKey.numpad0: "0",
+    LogicalKeyboardKey.digit1: "1",
+    LogicalKeyboardKey.numpad1: "1",
+    LogicalKeyboardKey.digit2: "2",
+    LogicalKeyboardKey.numpad2: "2",
+    LogicalKeyboardKey.digit3: "3",
+    LogicalKeyboardKey.numpad3: "3",
+    LogicalKeyboardKey.digit4: "4",
+    LogicalKeyboardKey.numpad4: "4",
+    LogicalKeyboardKey.digit5: "5",
+    LogicalKeyboardKey.numpad5: "5",
+    LogicalKeyboardKey.digit6: "6",
+    LogicalKeyboardKey.numpad6: "6",
+    LogicalKeyboardKey.digit7: "7",
+    LogicalKeyboardKey.numpad7: "7",
+    LogicalKeyboardKey.digit8: "8",
+    LogicalKeyboardKey.numpad8: "8",
+    LogicalKeyboardKey.digit9: "9",
+    LogicalKeyboardKey.numpad9: "9",
+  };
+
+  final FocusNode _saveFocus = FocusNode();
+  String _zip = "";
   String? _error;
   bool _saving = false;
 
   @override
   void dispose() {
-    _zip.dispose();
+    _saveFocus.dispose();
     super.dispose();
+  }
+
+  void _addDigit(String digit) {
+    if (_saving || _zip.length >= _zipLength) {
+      return;
+    }
+    setState(() {
+      _zip += digit;
+      _error = null;
+    });
+    if (_zip.length == _zipLength) {
+      _saveFocus.requestFocus();
+    }
+  }
+
+  void _deleteDigit() {
+    if (_saving || _zip.isEmpty) {
+      return;
+    }
+    setState(() {
+      _zip = _zip.substring(0, _zip.length - 1);
+      _error = null;
+    });
+  }
+
+  KeyEventResult _onKey(FocusNode _, KeyEvent event) {
+    if (event is KeyUpEvent) {
+      return KeyEventResult.ignored;
+    }
+    final digit = _digitKeys[event.logicalKey];
+    if (digit != null) {
+      _addDigit(digit);
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.backspace) {
+      _deleteDigit();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   Future<void> _save() async {
     if (_saving) {
       return;
     }
-    if (_zip.text.length != 5) {
+    if (_zip.length != _zipLength) {
       setState(() => _error = "Enter a 5 digit ZIP code.");
       return;
     }
@@ -117,7 +183,7 @@ class _WeatherLocationDialogState extends State<_WeatherLocationDialog>
     final navigator = Navigator.of(context);
     String? error;
     try {
-      final location = await _lookUpZip(_zip.text);
+      final location = await _lookUpZip(_zip);
       if (location == null) {
         error = "Couldn't find that ZIP code.";
       }
@@ -140,46 +206,108 @@ class _WeatherLocationDialogState extends State<_WeatherLocationDialog>
     }
   }
 
-  // Sits above the middle of the screen to leave room for the on-screen keyboard.
+  Widget _digitRow(List<String> digits, {bool autofocusFirst = false}) => Row(
+    children: [
+      for (final digit in digits) ...[
+        if (digit != digits.first) const SizedBox(width: 6),
+        Expanded(child: _PadKey(
+          label: digit,
+          autofocus: autofocusFirst && digit == digits.first,
+          onPressed: () => _addDigit(digit),
+        )),
+      ],
+    ],
+  );
+
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 220),
+  Widget build(BuildContext context) => Focus(
+    canRequestFocus: false,
+    skipTraversal: true,
+    onKeyEvent: _onKey,
     child: XpWindow(
       title: "Weather location",
       icon: Icons.wb_sunny_outlined,
-      width: 360,
+      width: 300,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
-              controller: _zip,
-              autofocus: true,
-              keyboardType: TextInputType.number,
-              textInputAction: TextInputAction.done,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(5),
-              ],
-              style: const TextStyle(color: Colors.white, fontSize: 18),
-              decoration: InputDecoration(labelText: "ZIP code", errorText: _error),
-              onSubmitted: (_) => _save(),
+            Text(
+              _zip.isEmpty ? "ZIP code" : _zip.padRight(_zipLength, "_").split("").join(" "),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _zip.isEmpty ? Colors.white60 : Colors.white, fontSize: 20),
             ),
-            const SizedBox(height: 14),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(_error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Color(0xFFFFB4AB), fontSize: 12),
+                ),
+              ),
+            const SizedBox(height: 10),
+            _digitRow(const ["1", "2", "3"], autofocusFirst: true),
+            const SizedBox(height: 6),
+            _digitRow(const ["4", "5", "6"]),
+            const SizedBox(height: 6),
+            _digitRow(const ["7", "8", "9"]),
+            const SizedBox(height: 6),
             Row(
-              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                XpButton(label: _saving ? "Saving..." : "Save", onPressed: _save),
-                const SizedBox(width: 8),
-                XpButton(label: "Cancel", onPressed: () => Navigator.of(context).pop()),
+                const Spacer(),
+                const SizedBox(width: 6),
+                Expanded(child: _PadKey(label: "0", onPressed: () => _addDigit("0"))),
+                const SizedBox(width: 6),
+                Expanded(child: _PadKey(icon: Icons.backspace_outlined, onPressed: _deleteDigit)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: _PadKey(label: _saving ? "Saving..." : "Save", focusNode: _saveFocus, onPressed: _save)),
+                const SizedBox(width: 6),
+                Expanded(child: _PadKey(label: "Cancel", onPressed: () => Navigator.of(context).pop())),
               ],
             ),
           ],
         ),
       ),
     ),
+  );
+}
+
+class _PadKey extends StatelessWidget
+{
+  final String? label;
+  final IconData? icon;
+  final bool autofocus;
+  final FocusNode? focusNode;
+  final VoidCallback onPressed;
+
+  const _PadKey({this.label, this.icon, this.autofocus = false, this.focusNode, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) => XpPressable(
+    autofocus: autofocus,
+    focusNode: focusNode,
+    onPressed: onPressed,
+    builder: (context, focused) {
+      final color = focused ? Colors.black87 : Colors.white;
+
+      return Container(
+        height: 34,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          color: focused ? Colors.white : ScenicColors.glass,
+        ),
+        child: icon != null
+            ? Icon(icon, size: 18, color: color)
+            : Text(label!, style: TextStyle(color: color, fontSize: 15)),
+      );
+    },
   );
 }
 
