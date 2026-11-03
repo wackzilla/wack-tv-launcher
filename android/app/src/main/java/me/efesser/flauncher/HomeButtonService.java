@@ -24,6 +24,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Build;
+import android.os.SystemClock;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -59,7 +60,12 @@ public class HomeButtonService extends AccessibilityService
     // its launcher. Opening a moment later puts this launcher on top of that one.
     private static final long HOME_ANNOUNCED_DELAY_MS = 150;
 
+    // A stock home screen sends a burst of focus events, and each one would otherwise reopen this launcher.
+    private static final long GUARD_REPEAT_MS = 500;
+
     private static HomeButtonService instance;
+
+    private long lastGuardAt = 0;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final BroadcastReceiver homeAnnouncedReceiver = new BroadcastReceiver() {
@@ -140,8 +146,11 @@ public class HomeButtonService extends AccessibilityService
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-        Log.i(TAG, "event type=" + event.getEventType() + " package=" + event.getPackageName() + " class=" + event.getClassName() + " age=" + (android.os.SystemClock.uptimeMillis() - event.getEventTime()) + "ms");
-        if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+        if (event.getEventType() != AccessibilityEvent.TYPE_VIEW_FOCUSED || "com.amazon.tv.launcher".equals(String.valueOf(event.getPackageName()))) {
+            Log.i(TAG, "event type=" + event.getEventType() + " package=" + event.getPackageName() + " class=" + event.getClassName() + " age=" + (SystemClock.uptimeMillis() - event.getEventTime()) + "ms");
+        }
+        int type = event.getEventType();
+        if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && type != AccessibilityEvent.TYPE_VIEW_FOCUSED) {
             return;
         }
         if (!flutterPreferences(this).getBoolean(GUARD_STOCK_KEY, true)) {
@@ -151,7 +160,11 @@ public class HomeButtonService extends AccessibilityService
         String packageName = String.valueOf(event.getPackageName());
         for (String stockHome : STOCK_HOMES) {
             if (stockHome.equals(packageName)) {
-                goHome();
+                long now = SystemClock.uptimeMillis();
+                if (now - lastGuardAt >= GUARD_REPEAT_MS) {
+                    lastGuardAt = now;
+                    goHome();
+                }
                 return;
             }
         }
