@@ -18,15 +18,11 @@
 package me.efesser.flauncher;
 
 import android.accessibilityservice.AccessibilityService;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.SystemClock;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
@@ -56,29 +52,12 @@ public class HomeButtonService extends AccessibilityService
 
     private static final String TAG = "WackHome";
 
-    // Fire OS takes the Home key before onKeyEvent sees it, but announces it just before opening
-    // its launcher. Opening a moment later puts this launcher on top of that one.
-    private static final long HOME_ANNOUNCED_DELAY_MS = 150;
-
     // A stock home screen sends a burst of focus events, and each one would otherwise reopen this launcher.
     private static final long GUARD_REPEAT_MS = 500;
 
     private static HomeButtonService instance;
 
     private long lastGuardAt = 0;
-
-    private final Handler handler = new Handler(Looper.getMainLooper());
-    private final BroadcastReceiver homeAnnouncedReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String reason = intent.getStringExtra("reason");
-            Log.i(TAG, "close system dialogs, reason=" + reason);
-            if ("homekey".equals(reason) && flutterPreferences(context).getBoolean(OVERRIDE_HOME_KEY, true)) {
-                handler.postDelayed(HomeButtonService.this::goHome, HOME_ANNOUNCED_DELAY_MS);
-            }
-        }
-    };
-    private boolean homeAnnouncedRegistered = false;
 
     static HomeButtonService getInstance() {
         return instance;
@@ -93,41 +72,17 @@ public class HomeButtonService extends AccessibilityService
         super.onServiceConnected();
         Log.i(TAG, "service connected, flags=" + getServiceInfo().flags + " caps=" + getServiceInfo().getCapabilities());
         instance = this;
-        registerHomeAnnounced();
-    }
-
-    private void registerHomeAnnounced() {
-        if (homeAnnouncedRegistered) {
-            return;
-        }
-        IntentFilter filter = new IntentFilter(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(homeAnnouncedReceiver, filter, Context.RECEIVER_EXPORTED);
-        } else {
-            registerReceiver(homeAnnouncedReceiver, filter);
-        }
-        homeAnnouncedRegistered = true;
-    }
-
-    private void unregisterHomeAnnounced() {
-        handler.removeCallbacksAndMessages(null);
-        if (homeAnnouncedRegistered) {
-            unregisterReceiver(homeAnnouncedReceiver);
-            homeAnnouncedRegistered = false;
-        }
     }
 
     @Override
     public boolean onUnbind(Intent intent) {
         instance = null;
-        unregisterHomeAnnounced();
         return super.onUnbind(intent);
     }
 
     @Override
     public void onDestroy() {
         instance = null;
-        unregisterHomeAnnounced();
         super.onDestroy();
     }
 
